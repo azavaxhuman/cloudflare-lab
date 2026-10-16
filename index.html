@@ -1,0 +1,1226 @@
+<!doctype html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Cloudflare Lab: interactive 3D simulator of how Cloudflare maps visitor HTTP/HTTPS ports to the origin server, calibrated with live tests.">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Cloudflare Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Vazirmatn:wght@400;600;800&display=swap">
+<style>
+:root{
+  --bg:#0d1220;
+  --panel:#141b2d;
+  --raise:#1b2439;
+  --line:#28334e;
+  --fg:#e8ecf4;
+  --muted:#8e98b0;
+  --amber:#f6a23c;
+  --on-amber:#1d1204;
+  --http:#ff6b6b;
+  --https:#3fe0a5;
+  --ok:#7cc7ff;
+  --warn:#ffcc4d;
+  --fail:#ff3b5c;
+  --hud:rgba(13,18,32,.82);
+  --display:"Vazirmatn",Tahoma,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:14px;line-height:1.6}
+.app{height:100%;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.app[dir="ltr"]{grid-template-columns:400px minmax(0,1fr)}
+.app[dir="ltr"] .panel{order:-1}
+.stage{position:relative;min-height:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg)}
+#scene{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#scene:active{cursor:grabbing}
+.hud{position:absolute;top:12px;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;pointer-events:none}
+.chip{background:var(--hud);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-family:var(--mono);font-size:clamp(11px,1.25vw,14px);font-weight:700;backdrop-filter:blur(6px)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.flow .sep{color:var(--muted);font-weight:500}
+.flow .hopsep{color:var(--warn)}
+.nav-views{position:absolute;left:12px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px;max-width:calc(100% - 150px)}
+.nav-views button{font-size:12px;padding:5px 10px;background:var(--hud);backdrop-filter:blur(6px)}
+.nav-views button[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:var(--on-amber);font-weight:600}
+.dpad{position:absolute;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,34px);grid-template-rows:repeat(3,34px);gap:4px}
+.dp{padding:0;width:34px;height:34px;display:grid;place-items:center;background:var(--hud);backdrop-filter:blur(6px);font-family:var(--mono);font-size:14px;line-height:1;touch-action:none;user-select:none;-webkit-user-select:none}
+.dp.zin{grid-area:1/1}.dp.up{grid-area:1/2}.dp.left{grid-area:2/1}.dp.home{grid-area:2/2}.dp.right{grid-area:2/3}.dp.zout{grid-area:3/1}.dp.down{grid-area:3/2}
+.nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
+.panel{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:18px;padding-inline:2px 6px}
+.head{display:flex;flex-direction:column;gap:6px}
+.head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.head h1{font-size:22px;font-weight:800;margin:0;line-height:1.35;text-wrap:balance}
+.head p{margin:0;color:var(--muted);max-width:62ch}
+.group{display:flex;flex-direction:column;gap:8px}
+.group h2{font-size:13px;font-weight:600;color:var(--muted);margin:0}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;color:var(--fg);background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;transition:background .15s,border-color .15s}
+button:hover:not(:disabled){border-color:var(--muted)}
+button:focus-visible,.switch input:focus-visible+.track{outline:2px solid var(--amber);outline-offset:2px}
+button:disabled{opacity:.35;cursor:not-allowed}
+.seg button{font-family:var(--mono);font-size:12.5px;font-weight:500}
+#req-custom{font-family:var(--display)}
+.seg button[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:var(--on-amber);font-weight:700}
+.seg.dim button[aria-pressed="true"]{background:var(--raise);color:var(--muted);border-color:var(--muted)}
+.lang button{font-family:var(--display);font-size:12.5px;padding:4px 10px}
+.note{font-size:12px;color:var(--warn);margin:0}
+.custom{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.custom-l{font-size:12px;color:var(--muted)}
+.custom input{width:7em;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--fg);background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:6px 8px;direction:ltr}
+.custom input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.switches{display:flex;flex-direction:column;gap:10px}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.switch input{position:absolute;opacity:0;width:1px;height:1px}
+.track{flex:none;width:38px;height:22px;border-radius:11px;background:var(--raise);border:1px solid var(--line);position:relative;transition:background .15s}
+.track::after{content:"";position:absolute;top:2px;inset-inline-start:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
+.switch input:checked+.track{background:var(--amber);border-color:var(--amber)}
+.switch input:checked+.track::after{transform:translateX(16px);background:var(--on-amber)}
+[dir="rtl"] .switch input:checked+.track::after{transform:translateX(-16px)}
+.switch input:disabled+.track{opacity:.35}
+.switch input:disabled~.lbl{opacity:.5}
+.switch .lbl{display:flex;flex-direction:column;line-height:1.35}
+.switch .lbl small{color:var(--muted);font-size:12px}
+.switch.big .lbl>span{font-weight:600}
+.readout{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.leg{display:grid;grid-template-columns:7.5em 1fr;gap:4px 10px;align-items:center}
+.leg .name{font-size:12px;color:var(--muted)}
+.leg .val{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.badge{font-family:var(--mono);font-size:13px;font-weight:700;border-radius:6px;padding:2px 8px;border:1px solid currentColor;direction:ltr;unicode-bidi:isolate}
+.tag{font-size:12px;color:var(--muted)}
+.status{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+.status .code{font-family:var(--mono);font-size:32px;font-weight:700;line-height:1;direction:ltr}
+.status .ttl{font-family:var(--mono);font-size:13px;color:var(--muted);direction:ltr;overflow-wrap:anywhere}
+.explain{display:flex;flex-direction:column;gap:6px}
+.explain p{margin:0;max-width:62ch}
+.callout{border:1px dashed var(--warn);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.callout strong{color:var(--warn);font-size:13px}
+.callout p{margin:0;font-size:13px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;counter-reset:st}
+.steps li{counter-increment:st;display:grid;grid-template-columns:24px 1fr;gap:8px;align-items:start;font-size:13px;color:var(--muted);transition:color .2s}
+.steps li::before{content:counter(st);font-family:var(--mono);font-size:11px;font-weight:700;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--raise)}
+.steps li.done{color:var(--fg)}
+.steps li.done::before{background:var(--line)}
+.steps li.active{color:var(--fg);font-weight:600}
+.steps li.active::before{background:var(--amber);border-color:var(--amber);color:var(--on-amber)}
+.steps li.k-redirect.done::before,.steps li.k-redirect.active::before{background:var(--warn);border-color:var(--warn);color:var(--on-amber)}
+.steps li.k-fail.done::before,.steps li.k-fail.active::before{background:var(--fail);border-color:var(--fail);color:var(--fg)}
+.steps li span{min-width:0;overflow-wrap:anywhere}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:11px;height:11px;display:inline-block;flex:none}
+.sw.dot{border-radius:50%}
+.sw.ring{border-radius:50%;box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--https)}
+.sw.env{border-radius:2px;width:14px;height:9px}
+.keys{font-size:12px;color:var(--muted);margin:0}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;background:var(--raise)}
+.c-http{color:var(--http)}
+.c-https{color:var(--https)}
+.c-ok{color:var(--ok)}
+.c-warn{color:var(--warn)}
+.c-fail{color:var(--fail)}
+.c-amber{color:var(--amber)}
+.c-muted{color:var(--muted)}
+.bg-http{background:var(--http)}
+.bg-https{background:var(--https)}
+.bg-ok{background:var(--ok)}
+.bg-warn{background:var(--warn)}
+.bg-fail{background:var(--fail)}
+@media (max-width:900px){
+  .app,.app[dir="ltr"]{height:auto;grid-template-columns:minmax(0,1fr)}
+  .app[dir="ltr"] .panel{order:0}
+  .stage{height:min(62vh,560px);min-height:340px}
+  .panel{overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app" id="app" dir="rtl">
+  <section class="stage" id="stage">
+    <canvas id="scene"></canvas>
+    <div class="hud" dir="ltr">
+      <div class="chip flow" id="hudFlow"></div>
+      <div class="chip c-amber" id="hudMode"></div>
+      <div class="chip" id="hudCode"></div>
+    </div>
+    <div class="nav-views" id="navViews">
+      <button type="button" id="nv-overview" data-view="overview"></button>
+      <button type="button" id="nv-visitor" data-view="visitor"></button>
+      <button type="button" id="nv-edge" data-view="edge"></button>
+      <button type="button" id="nv-origin" data-view="origin"></button>
+      <button type="button" id="nv-follow" aria-pressed="false"></button>
+    </div>
+    <div class="dpad" id="dpad" dir="ltr">
+      <button type="button" class="dp zin" id="dp-zin" data-zoom="1">+</button>
+      <button type="button" class="dp up" id="dp-up" data-pan="0,1">▲</button>
+      <button type="button" class="dp left" id="dp-left" data-pan="-1,0">◀</button>
+      <button type="button" class="dp home" id="dp-home">⌂</button>
+      <button type="button" class="dp right" id="dp-right" data-pan="1,0">▶</button>
+      <button type="button" class="dp zout" id="dp-zout" data-zoom="-1">−</button>
+      <button type="button" class="dp down" id="dp-down" data-pan="0,-1">▼</button>
+    </div>
+  </section>
+
+  <aside class="panel" id="panel">
+    <div class="head">
+      <div class="head-row">
+        <h1 id="t-title"></h1>
+        <div class="seg lang" id="langSeg">
+          <button type="button" id="lang-fa" lang="fa">فارسی</button>
+          <button type="button" id="lang-en" lang="en">English</button>
+        </div>
+      </div>
+      <p id="t-lead"></p>
+    </div>
+
+    <div class="group">
+      <h2 id="t-h-proxy"></h2>
+      <label class="switch big"><input type="checkbox" id="optProxy" checked><span class="track"></span><span class="lbl"><span id="t-sw-proxy"></span><small id="t-sw-proxy-s"></small></span></label>
+    </div>
+
+    <div class="group">
+      <h2 id="t-h-mode"></h2>
+      <div class="seg" id="modeSeg" dir="ltr"></div>
+      <p class="note" id="modeNote" hidden></p>
+    </div>
+
+    <div class="group">
+      <h2 id="t-h-req"></h2>
+      <div class="seg" id="reqSeg" dir="ltr"></div>
+      <div class="custom">
+        <span class="custom-l" id="t-custom-l"></span>
+        <div class="seg" dir="ltr"><button type="button" id="cs-http">HTTP</button><button type="button" id="cs-https">HTTPS</button></div>
+        <input type="number" id="customPort" min="1" max="65535" value="3000" inputmode="numeric" aria-labelledby="t-custom-l">
+      </div>
+      <p class="note" id="reqNote" hidden></p>
+    </div>
+
+    <div class="group">
+      <h2 id="t-h-set"></h2>
+      <div class="switches">
+        <label class="switch"><input type="checkbox" id="optAlways"><span class="track"></span><span class="lbl"><span dir="ltr">Always Use HTTPS</span><small id="t-sw-always-s"></small></span></label>
+        <label class="switch"><input type="checkbox" id="optRule"><span class="track"></span><span class="lbl"><span id="t-sw-rule"></span><small id="t-sw-rule-s"></small></span></label>
+        <label class="switch"><input type="checkbox" id="optOrigin"><span class="track"></span><span class="lbl"><span id="t-sw-origin"></span><small id="t-sw-origin-s"></small></span></label>
+        <label class="switch"><input type="checkbox" id="optCert" checked><span class="track"></span><span class="lbl"><span id="t-sw-cert"></span><small id="t-sw-cert-s"></small></span></label>
+        <label class="switch"><input type="checkbox" id="optP80" checked><span class="track"></span><span class="lbl"><span id="t-sw-p80"></span><small id="t-sw-p80-s"></small></span></label>
+      </div>
+    </div>
+
+    <div class="readout" aria-live="polite">
+      <div class="leg"><span class="name" id="t-row-first"></span><span class="val" id="rowFirst"></span></div>
+      <div class="leg"><span class="name" id="t-row-redir"></span><span class="val" id="rowRedir"></span></div>
+      <div class="leg"><span class="name" id="t-row-final"></span><span class="val" id="rowFinal"></span></div>
+      <div class="status"><span class="code" id="stCode"></span><span class="ttl" id="stTitle"></span></div>
+      <div class="explain" id="stText"></div>
+      <div class="callout" id="redirBox" hidden><strong id="t-redir-h"></strong><p id="t-redir-p"></p></div>
+    </div>
+
+    <div class="group">
+      <h2 id="t-h-steps"></h2>
+      <div class="actions">
+        <button type="button" id="btnPlay"></button>
+        <button type="button" id="btnNext"></button>
+        <button type="button" id="btnRestart"></button>
+      </div>
+      <div class="seg" id="speedSeg" dir="ltr"></div>
+      <ol class="steps" id="steps"></ol>
+    </div>
+
+    <div class="legend" id="legend"></div>
+    <p class="keys" id="keys"></p>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const ISO=s=>"⁦"+s+"⁩";
+  const REQS={
+    h80:{scheme:"http",port:80,code:"KeyQ",k:"Q"},
+    s443:{scheme:"https",port:443,code:"KeyW",k:"W"},
+    h8080:{scheme:"http",port:8080,code:"KeyE",k:"E"},
+    s8443:{scheme:"https",port:8443,code:"KeyR",k:"R"},
+    custom:{code:"KeyT",k:"T"}
+  };
+  const MODES={off:"Off",flexible:"Flexible",full:"Full",strict:"Full (strict)",pull:"Strict (Origin Pull)"};
+  const MODE_KEYS=Object.keys(MODES);
+  const SLOTS=[80,443,8080,8443,"c"];
+  const HTTP_PORTS=[80,8080,8880,2052,2082,2086,2095],HTTPS_PORTS=[443,2053,2083,2087,2096,8443];
+  const NOCACHE=[2052,2053,2082,2083,2086,2087,2095,2096,8880,8443];
+  const slotOf=p=>[80,443,8080,8443].includes(p)?p:"c";
+  const SPEEDS=[0.5,1,2];
+  const HEX={http:0xff6b6b,https:0x3fe0a5,ok:0x7cc7ff,warn:0xffcc4d,fail:0xff3b5c,amber:0xf6a23c,idle:0x34405e};
+  const CSS={http:"#ff6b6b",https:"#3fe0a5",ok:"#7cc7ff",warn:"#ffcc4d",fail:"#ff3b5c",amber:"#f6a23c",muted:"#8e98b0",fg:"#e8ecf4",chip:"rgba(20,27,45,.92)"};
+
+  const T={
+    fa:{
+      title:"آزمایشگاه کلادفلر",
+      lead:"پروکسی، حالت SSL/TLS و نوع درخواست را عوض کنید و مسیر کامل درخواست تا سرور اوریجین و برگشت پاسخ را قدم به قدم ببینید.",
+      h_proxy:"پروکسی کلادفلر",
+      sw_proxy:"پروکسی روشن (ابر نارنجی)",
+      sw_proxy_s:"خاموش = DNS only، ابر خاکستری؛ کاربر مستقیم به سرور وصل می‌شود",
+      h_mode:"حالت SSL/TLS",
+      note_mode_direct:"پروکسی خاموش است، پس حالت SSL/TLS هیچ اثری ندارد.",
+      h_req:"درخواست کاربر",
+      note_pull:"پورت‌های HTTP غیراستاندارد در حالت Origin Pull در این شبیه‌ساز نیامده‌اند.",
+      note_off:"در حالت Off فقط HTTPS روی پورت 443 در این شبیه‌ساز آمده است.",
+      note_always:"رفتار Always Use HTTPS روی پورت‌های غیراستاندارد در مستندات کلادفلر نیامده؛ روی دامنه‌ی خودتان با curl -I تست کنید.",
+      h_set:"تنظیمات",
+      sw_always_s:"لبه درخواست HTTP را با 301 به HTTPS می‌فرستد",
+      sw_origin:"اوریجین پورت 80 را به HTTPS ریدایرکت می‌کند",
+      sw_origin_s:"مثل return 301 https://… در Nginx",
+      sw_cert:"گواهی اوریجین معتبر است",
+      sw_cert_s:"خاموش = گواهی self-signed",
+      sw_p80:"پورت 80 اوریجین باز است",
+      sw_p80_s:"خاموش = چیزی روی پورت 80 گوش نمی‌دهد",
+      row_first:"اولین درخواست",
+      row_redir:"تعداد ریدایرکت",
+      row_final:"در نهایت روی اوریجین",
+      none_reach:"به صفحه نمی‌رسد",
+      redir_none:"بدون ریدایرکت",
+      redir_loop:"بی‌نهایت (حلقه)",
+      enc_plain:"بدون رمزنگاری",
+      enc_tls:"رمزنگاری‌شده",
+      enc_verified:"رمزنگاری + اعتبارسنجی گواهی",
+      enc_nocheck:"رمزنگاری، بدون بررسی گواهی",
+      enc_browser:"رمزنگاری؛ خود مرورگر گواهی را بررسی می‌کند",
+      redir_h:"ریدایرکت یعنی چه؟",
+      redir_p:"ریدایرکت یعنی سرور به‌جای صفحه یک پاسخ کوتاه 301 با هدر Location برمی‌گرداند. درخواست معلق نمی‌ماند: این پاسخ به مرورگر می‌رسد و مرورگر خودش، بدون دخالت کاربر، یک درخواست کاملاً جدید به آدرس Location می‌فرستد. درخواست جدید دوباره از اول همین مسیر را طی می‌کند.",
+      h_steps:"مسیر درخواست، قدم به قدم",
+      play:"توقف",
+      paused:"پخش",
+      next:"قدم بعدی",
+      restart:"از اول",
+      speed:"سرعت",
+      nav_overview:"کل صحنه",
+      nav_visitor:"کاربر",
+      nav_edge:"لبه",
+      nav_origin:"اوریجین",
+      nav_follow:"دنبال کردن بسته",
+      nav_fwd:"حرکت به جلو",
+      nav_back:"حرکت به عقب",
+      nav_left:"حرکت به چپ",
+      nav_right:"حرکت به راست",
+      nav_in:"نزدیک‌تر",
+      nav_out:"دورتر",
+      nav_home:"کل صحنه",
+      nav_help:"ناوبری: کشیدن = چرخش · راست‌کلیک یا Shift+کشیدن = جابه‌جایی · اسکرول = زوم · دابل‌کلیک = رفتن به همان نقطه · روی گوشی: دو انگشت = جابه‌جایی و زوم · <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> حرکت · <kbd>+</kbd> <kbd>−</kbd> زوم · <kbd>F</kbd> دنبال کردن بسته · <kbd>0</kbd> کل صحنه",
+      nogl:"مرورگر شما نمایش سه‌بعدی (WebGL) را اجرا نکرد. پنل کنار صفحه همچنان مسیر کامل هر حالت را نشان می‌دهد.",
+      lg_http:"درخواست HTTP",
+      lg_https:"درخواست HTTPS",
+      lg_200:"پاسخ 200",
+      lg_301:"پاسخ 301",
+      lg_err:"خطا",
+      keys:"میان‌برها: <kbd>1</kbd>–<kbd>5</kbd> حالت‌ها · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> <kbd>T</kbd> درخواست‌ها · <kbd>P</kbd> پروکسی · <kbd>H</kbd> Always Use HTTPS · <kbd>O</kbd> ریدایرکت اوریجین · <kbd>Space</kbd> پخش/توقف · <kbd>N</kbd> قدم بعدی · <kbd>S</kbd> از اول · <kbd>L</kbd> زبان",
+      v_visitor:"کاربر",
+      v_edge:"لبه‌ی کلادفلر",
+      v_origin:"سرور اوریجین",
+      st_req:"مرورگر ← لبه‌ی کلادفلر: {r}",
+      st_req_new:"مرورگر خودش درخواست جدید می‌فرستد ← لبه: {r}",
+      st_req_direct:"مرورگر مستقیم ← اوریجین: {r}",
+      st_req_direct_new:"مرورگر خودش درخواست جدید می‌فرستد ← مستقیم به اوریجین: {r}",
+      st_fwd:"لبه ← اوریجین: {r} ({enc})",
+      st_fail521:"اتصال برقرار نمی‌شود",
+      st_fail526:"گواهی در اعتبارسنجی رد می‌شود",
+      st_resp_oe:"اوریجین ← لبه: پاسخ {c}",
+      st_resp_eb:"لبه ← مرورگر: پاسخ {c}",
+      st_resp_ob:"اوریجین ← مرورگر: پاسخ {c}",
+      st_refused:"پورت 80 اتصال را رد می‌کند؛ مرورگر خطای ERR_CONNECTION_REFUSED نشان می‌دهد",
+      st_certwarn:"اوریجین گواهی self-signed نشان می‌دهد؛ مرورگر هشدار امنیتی NET::ERR_CERT_AUTHORITY_INVALID می‌دهد",
+      st_loop:"همین چرخه تکرار می‌شود؛ مرورگر بعد از حدود ۲۰ ریدایرکت دست می‌کشد: ERR_TOO_MANY_REDIRECTS",
+      sum_direct:"پروکسی خاموش است (DNS only): DNS آدرس IP واقعی اوریجین را برمی‌گرداند و مرورگر مستقیم به همان پورت اوریجین وصل می‌شود. کلادفلر در مسیر نیست، پس حالت SSL/TLS و Always Use HTTPS اثری ندارند و IP سرور هم پنهان نمی‌ماند.",
+      sum_off_http:"در حالت Off همه‌چیز HTTP ساده است و لبه به همان پورت {p} اوریجین وصل می‌شود.",
+      sum_off_https:"مستندات کلادفلر می‌گوید Off درخواست HTTPS را به HTTP ریدایرکت می‌کند، ولی در دو تست جداگانه، حتی با هدرهای مرورگر Chrome، ریدایرکتی اتفاق نیفتاد: لبه خودش HTTPS را جواب داد و با HTTP ساده به پورت 80 اوریجین وصل شد، درست مثل Flexible.",
+      sum_always:"Always Use HTTPS درخواست HTTP را در خود لبه با 301 به HTTPS برمی‌گرداند. درخواست اول هیچ‌وقت به اوریجین نمی‌رسد.",
+      sum_flex_http:"Flexible همیشه با HTTP به اوریجین وصل می‌شود؛ اینجا به پورت {p}.",
+      sum_flex_443:"در Flexible کاربر تا لبه رمزنگاری‌شده می‌آید، ولی لبه با HTTP ساده به پورت 80 اوریجین وصل می‌شود.",
+      sum_flex_other:"Flexible فقط روی پورت 443 کار می‌کند؛ پورت {p} به رفتار Full برمی‌گردد و با HTTPS به همان پورت اوریجین می‌رود.",
+      sum_full_http:"Full پروتکل کاربر را تکرار می‌کند: HTTP کاربر با HTTP ساده به پورت {p} اوریجین می‌رسد.",
+      sum_full_https:"Full با HTTPS به پورت {p} اوریجین وصل می‌شود ولی گواهی را بررسی نمی‌کند.",
+      sum_strict_http:"Full (strict) هم پروتکل کاربر را تکرار می‌کند: HTTP کاربر بدون رمزنگاری به پورت {p} اوریجین می‌رسد. سخت‌گیری strict فقط برای اتصال‌های HTTPS است.",
+      sum_strict_https:"Full (strict) با HTTPS به پورت {p} اوریجین وصل می‌شود و گواهی را کامل اعتبارسنجی می‌کند.",
+      sum_pull_80:"Strict (SSL-Only Origin Pull) تنها حالتی است که HTTP کاربر را بدون ریدایرکت به HTTPS روی پورت 443 اوریجین تبدیل می‌کند. این حالت فقط در پلن Enterprise است.",
+      sum_pull_other:"در Origin Pull اتصال به اوریجین همیشه HTTPS با اعتبارسنجی گواهی است، اینجا روی پورت {p}.",
+      sum_origin_redirect:"اوریجین به درخواست HTTP روی پورت 80 جواب 301 به HTTPS می‌دهد.",
+      sum_521:"پورت 80 اوریجین بسته است، پس لبه نمی‌تواند وصل شود و خطای 521 برمی‌گرداند.",
+      sum_526:"گواهی self-signed در اعتبارسنجی رد می‌شود و لبه خطای 526 برمی‌گرداند.",
+      sum_selfsigned_ok:"گواهی self-signed است، ولی این حالت گواهی را بررسی نمی‌کند و اتصال برقرار می‌شود.",
+      sum_refused:"پورت 80 اوریجین بسته است و چون کلادفلر در مسیر نیست، مرورگر خودش خطای اتصال می‌گیرد.",
+      sum_certwarn:"بدون پروکسی، خود مرورگر گواهی را بررسی می‌کند و گواهی self-signed را قبول نمی‌کند.",
+      sum_loop:"حلقه‌ی ریدایرکت: دو طرف مرورگر را مدام به آدرس دیگری می‌فرستند و صفحه هیچ‌وقت باز نمی‌شود.",
+      sum_loop_flex:"این همان حلقه‌ی معروف Flexible است: لبه با HTTP به اوریجین می‌رود و اوریجین دوباره به HTTPS ریدایرکت می‌کند. راه‌حل، حالت Full (strict) است.",
+      custom:"دلخواه",
+      custom_l:"پورت دلخواه:",
+      sw_rule:"Origin Rule: تغییر پورت مقصد",
+      sw_rule_s:"لبه به‌جای پورت معمول به پورت {p} اوریجین وصل می‌شود",
+      st_noproxy:"کلادفلر روی پورت {p} گوش نمی‌دهد؛ اتصال برقرار نمی‌شود و مرورگر بعد از مدتی خطای ERR_CONNECTION_TIMED_OUT می‌دهد",
+      st_tls:"پورت {p} در کلادفلر مخصوص HTTP است؛ دست‌دهی TLS شکست می‌خورد: ERR_SSL_PROTOCOL_ERROR",
+      sum_unsupported:"پورت {p} جزو پورت‌هایی نیست که کلادفلر پروکسی می‌کند، پس با ابر نارنجی این درخواست اصلاً به اوریجین نمی‌رسد. سه راه دارید: پروکسی این زیردامنه را خاموش کنید (DNS only)، با Origin Rule یک پورت استاندارد را به این پورت اوریجین وصل کنید، یا از Spectrum استفاده کنید که برای همه‌ی پورت‌ها فقط در پلن Enterprise است.",
+      sum_mismatch_https:"پورت {p} در کلادفلر برای HTTP است، نه HTTPS. لبه روی این پورت TLS ندارد، پس اتصال HTTPS شکست می‌خورد.",
+      sum_mismatch_http:"پورت {p} در کلادفلر برای HTTPS است و درخواست HTTP ساده روی آن با خطای 400 رد می‌شود.",
+      sum_nocache:"پورت {p} پروکسی می‌شود، ولی کش کلادفلر روی آن غیرفعال است.",
+      sum_origin_rule:"Origin Rule پورت مقصد را عوض می‌کند: لبه به‌جای پورت {from}، به پورت {p} اوریجین وصل می‌شود. پروتکل اتصال را همچنان حالت SSL/TLS تعیین می‌کند.",
+      sum_measured:"این رفتار در تست واقعی روی دامنه هم دقیقاً همین‌طور دیده شد.",
+      st_fail520:"اوریجین روی این پورت HTTPS گوش می‌دهد و درخواست HTTP ساده را نمی‌فهمد",
+      sum_off_https_other:"روی پورت {p} هم لبه HTTPS را جواب می‌دهد، ولی با HTTP ساده به همان پورت {p} اوریجین وصل می‌شود. فرق Off با Flexible همین‌جاست: Flexible روی این پورت TLS می‌فرستد ولی Off متن ساده. اگر اوریجین روی این پورت فقط HTTPS گوش بدهد، نتیجه خطای 520 است.",
+      sum_always_other:"در تست واقعی روی پورت {p} هم ریدایرکت انجام شد، ولی Location شماره‌ی پورت را حذف کرد و کاربر را به https روی پورت 443 فرستاد.",
+      sum_flex_measured:"در تست تکمیلی، Flexible روی این پورت همیشه با TLS به همان پورت اوریجین وصل شد، یعنی دقیقاً مثل Full. خطای 520 تست اول فقط در چند ثانیه‌ی اول بعد از عوض شدن حالت دیده شده بود."
+    },
+    en:{
+      title:"Cloudflare Lab",
+      lead:"Change the proxy, the SSL/TLS mode and the request type, and follow the full path to the origin server and the response back, step by step.",
+      h_proxy:"Cloudflare proxy",
+      sw_proxy:"Proxied (orange cloud)",
+      sw_proxy_s:"Off = DNS only (grey cloud); the visitor connects straight to the server",
+      h_mode:"SSL/TLS mode",
+      note_mode_direct:"The proxy is off, so the SSL/TLS mode has no effect.",
+      h_req:"Visitor request",
+      note_pull:"Non-standard HTTP ports in Origin Pull mode are not modeled here.",
+      note_off:"In Off mode only HTTPS on port 443 is modeled here.",
+      note_always:"Cloudflare's docs don't describe Always Use HTTPS on non-standard ports; test it on your own domain with curl -I.",
+      h_set:"Settings",
+      sw_always_s:"The edge answers HTTP with a 301 to HTTPS",
+      sw_origin:"Origin redirects port 80 to HTTPS",
+      sw_origin_s:"Like return 301 https://… in Nginx",
+      sw_cert:"Origin certificate is trusted",
+      sw_cert_s:"Off = self-signed certificate",
+      sw_p80:"Origin port 80 is open",
+      sw_p80_s:"Off = nothing listens on port 80",
+      row_first:"First request",
+      row_redir:"Redirects",
+      row_final:"Lands on origin",
+      none_reach:"Page never loads",
+      redir_none:"None",
+      redir_loop:"Endless (loop)",
+      enc_plain:"plaintext",
+      enc_tls:"encrypted",
+      enc_verified:"TLS + certificate validated",
+      enc_nocheck:"TLS, certificate not checked",
+      enc_browser:"TLS; the browser checks the certificate",
+      redir_h:"What is a redirect?",
+      redir_p:"A redirect means the server returns a short 301 response with a Location header instead of the page. The request does not hang: that response reaches the browser, and the browser itself, with no action from the user, sends a brand-new request to the Location address. The new request travels the whole path again.",
+      h_steps:"Request path, step by step",
+      play:"Pause",
+      paused:"Play",
+      next:"Next step",
+      restart:"Restart",
+      speed:"Speed",
+      nav_overview:"Overview",
+      nav_visitor:"Visitor",
+      nav_edge:"Edge",
+      nav_origin:"Origin",
+      nav_follow:"Follow packet",
+      nav_fwd:"Move forward",
+      nav_back:"Move back",
+      nav_left:"Move left",
+      nav_right:"Move right",
+      nav_in:"Zoom in",
+      nav_out:"Zoom out",
+      nav_home:"Overview",
+      nav_help:"Navigation: drag = orbit · right-click or Shift+drag = pan · scroll = zoom · double-click = travel to that point · on phones: two fingers = pan and zoom · <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> move · <kbd>+</kbd> <kbd>−</kbd> zoom · <kbd>F</kbd> follow packet · <kbd>0</kbd> overview",
+      nogl:"Your browser could not run the 3D view (WebGL). The panel still shows the full path for every setting.",
+      lg_http:"HTTP request",
+      lg_https:"HTTPS request",
+      lg_200:"200 response",
+      lg_301:"301 response",
+      lg_err:"Error",
+      keys:"Shortcuts: <kbd>1</kbd>–<kbd>5</kbd> modes · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> <kbd>T</kbd> requests · <kbd>P</kbd> proxy · <kbd>H</kbd> Always Use HTTPS · <kbd>O</kbd> origin redirect · <kbd>Space</kbd> play/pause · <kbd>N</kbd> next step · <kbd>S</kbd> restart · <kbd>L</kbd> language",
+      v_visitor:"Visitor",
+      v_edge:"Cloudflare Edge",
+      v_origin:"Origin Server",
+      st_req:"Browser → Cloudflare edge: {r}",
+      st_req_new:"Browser sends a new request on its own → edge: {r}",
+      st_req_direct:"Browser → origin directly: {r}",
+      st_req_direct_new:"Browser sends a new request on its own → origin directly: {r}",
+      st_fwd:"Edge → origin: {r} ({enc})",
+      st_fail521:"connection fails",
+      st_fail526:"certificate fails validation",
+      st_resp_oe:"Origin → edge: response {c}",
+      st_resp_eb:"Edge → browser: response {c}",
+      st_resp_ob:"Origin → browser: response {c}",
+      st_refused:"Port 80 refuses the connection; the browser shows ERR_CONNECTION_REFUSED",
+      st_certwarn:"Origin presents a self-signed certificate; the browser shows NET::ERR_CERT_AUTHORITY_INVALID",
+      st_loop:"The same cycle repeats; the browser gives up after about 20 redirects: ERR_TOO_MANY_REDIRECTS",
+      sum_direct:"The proxy is off (DNS only): DNS returns the origin's real IP and the browser connects straight to the same port on the origin. Cloudflare is not in the path, so the SSL/TLS mode and Always Use HTTPS do nothing, and the server IP is exposed.",
+      sum_off_http:"In Off mode everything is plaintext HTTP and the edge connects to the same origin port {p}.",
+      sum_off_https:"Cloudflare's docs say Off redirects HTTPS to HTTP, but in two separate tests, even with Chrome browser headers, no redirect happened: the edge answered HTTPS itself and connected to origin port 80 over plaintext HTTP, exactly like Flexible.",
+      sum_always:"Always Use HTTPS answers the HTTP request at the edge with a 301 to HTTPS. The first request never reaches the origin.",
+      sum_flex_http:"Flexible always connects to the origin over HTTP, here on port {p}.",
+      sum_flex_443:"In Flexible the visitor is encrypted up to the edge, but the edge connects to origin port 80 over plaintext HTTP.",
+      sum_flex_other:"Flexible only applies to port 443; port {p} falls back to Full and reaches the same origin port over HTTPS.",
+      sum_full_http:"Full mirrors the visitor's scheme: the visitor's HTTP reaches origin port {p} as plaintext HTTP.",
+      sum_full_https:"Full connects to origin port {p} over HTTPS without checking the certificate.",
+      sum_strict_http:"Full (strict) also mirrors the visitor's scheme: the visitor's HTTP reaches origin port {p} unencrypted. Strict only applies to HTTPS connections.",
+      sum_strict_https:"Full (strict) connects to origin port {p} over HTTPS and fully validates the certificate.",
+      sum_pull_80:"Strict (SSL-Only Origin Pull) is the only mode that turns visitor HTTP into HTTPS on origin port 443 without a redirect. Enterprise plan only.",
+      sum_pull_other:"In Origin Pull the origin connection is always HTTPS with certificate validation, here on port {p}.",
+      sum_origin_redirect:"The origin answers HTTP on port 80 with a 301 to HTTPS.",
+      sum_521:"Origin port 80 is closed, so the edge cannot connect and returns 521.",
+      sum_526:"The self-signed certificate fails validation and the edge returns 526.",
+      sum_selfsigned_ok:"The certificate is self-signed, but this mode does not check it, so the connection succeeds.",
+      sum_refused:"Origin port 80 is closed, and with Cloudflare out of the path the browser gets the connection error itself.",
+      sum_certwarn:"Without the proxy the browser checks the certificate itself and rejects the self-signed one.",
+      sum_loop:"Redirect loop: the two sides keep sending the browser to the other address, so the page never opens.",
+      sum_loop_flex:"This is the classic Flexible loop: the edge talks HTTP to the origin and the origin redirects back to HTTPS. The fix is Full (strict).",
+      custom:"Custom",
+      custom_l:"Custom port:",
+      sw_rule:"Origin Rule: override destination port",
+      sw_rule_s:"The edge connects to origin port {p} instead of the usual one",
+      st_noproxy:"Cloudflare does not listen on port {p}; the connection never opens and the browser eventually shows ERR_CONNECTION_TIMED_OUT",
+      st_tls:"Cloudflare treats port {p} as an HTTP port; the TLS handshake fails: ERR_SSL_PROTOCOL_ERROR",
+      sum_unsupported:"Port {p} is not one of the ports Cloudflare proxies, so with the orange cloud this request never reaches the origin. You have three options: turn the proxy off for this subdomain (DNS only), use an Origin Rule to map a standard port to this origin port, or use Spectrum, which covers every port only on Enterprise.",
+      sum_mismatch_https:"Cloudflare uses port {p} for HTTP, not HTTPS. The edge has no TLS on this port, so the HTTPS connection fails.",
+      sum_mismatch_http:"Cloudflare uses port {p} for HTTPS, and a plaintext HTTP request on it is rejected with 400.",
+      sum_nocache:"Port {p} is proxied, but Cloudflare caching is disabled on it.",
+      sum_origin_rule:"The Origin Rule overrides the destination port: the edge connects to origin port {p} instead of {from}. The SSL/TLS mode still decides the scheme.",
+      sum_measured:"The live test on the domain showed exactly this behavior.",
+      st_fail520:"the origin speaks HTTPS on this port and cannot read plaintext HTTP",
+      sum_off_https_other:"On port {p} the edge also answers HTTPS, but connects to the same origin port {p} over plaintext HTTP. This is where Off differs from Flexible: Flexible sends TLS on this port, Off sends plaintext. If the origin only listens for HTTPS on this port, the result is a 520 error.",
+      sum_always_other:"In the live test port {p} was redirected too, but the Location dropped the port number and sent the visitor to https on port 443.",
+      sum_flex_measured:"In the follow-up test Flexible always connected to the same origin port over TLS on this port, exactly like Full. The 520 seen in the first test only happened in the first seconds after the mode changed."
+    }
+  };
+
+  const state={lang:"fa",proxy:true,mode:"strict",req:"h80",always:false,originRedirect:false,originRule:false,cert:true,p80:true,playing:true,speed:1,customScheme:"http",customPort:3000};
+  const getReq=k=>k==="custom"?{scheme:state.customScheme,port:state.customPort}:REQS[k];
+  try{const l=localStorage.getItem("cfpl-lang");if(l==="fa"||l==="en")state.lang=l;}catch(e){}
+
+  function t(k,p){
+    let s=(T[state.lang]&&T[state.lang][k])||T.en[k]||k;
+    if(p)s=s.replace(/\{(\w+)\}/g,(m,x)=>p[x]!==undefined?p[x]:m);
+    return s;
+  }
+  const lab=x=>x.scheme.toUpperCase()+" :"+x.port;
+  const url=x=>x.scheme+"://example.com"+(((x.scheme==="http"&&x.port===80)||(x.scheme==="https"&&x.port===443))?"":":"+x.port)+"/";
+
+  function reqAllowed(k,s){
+    if(!s.proxy)return true;
+    const r=getReq(k),inH=HTTP_PORTS.includes(r.port),inS=HTTPS_PORTS.includes(r.port);
+    if(!inH&&!inS)return true;
+    if((r.scheme==="https"&&inH)||(r.scheme==="http"&&inS))return true;
+    if(s.mode==="pull"&&r.scheme==="http"&&r.port!==80)return false;
+    return true;
+  }
+  function reqNoteKey(s){
+    if(!s.proxy)return null;
+    if(Object.keys(REQS).every(k=>reqAllowed(k,s)))return null;
+    if(s.mode==="pull")return "note_pull";
+    return null;
+  }
+
+  function resolveHop(r,s){
+    const h={v:{scheme:r.scheme,port:r.port},via:s.proxy?"edge":"direct",o:null,verify:null,resp:null,sums:[],attemptFail:null};
+    const ok={from:"origin",kind:"ok",code:"200",title:"OK"};
+    const toHttps={scheme:"https",port:443};
+    if(!s.proxy){
+      h.o={scheme:r.scheme,port:r.port};
+      h.verify=r.scheme==="https"?"browser":null;
+      h.sums.push({k:"sum_direct"});
+      if(r.scheme==="http"&&r.port===80&&!s.p80){h.attemptFail="refused";h.resp={from:"none",kind:"fail",code:"ERR",title:"ERR_CONNECTION_REFUSED"};h.sums.push({k:"sum_refused"});}
+      else if(r.scheme==="https"&&!s.cert){h.resp={from:"origin",kind:"fail",code:"ERR",title:"NET::ERR_CERT_AUTHORITY_INVALID",cert:true};h.sums.push({k:"sum_certwarn"});}
+      else if(r.scheme==="http"&&r.port===80&&s.originRedirect){h.resp={from:"origin",kind:"redirect",code:"301",title:"Moved Permanently",next:toHttps};h.sums.push({k:"sum_origin_redirect"});}
+      else h.resp=ok;
+      return h;
+    }
+    const p=r.port,inH=HTTP_PORTS.includes(p),inS=HTTPS_PORTS.includes(p);
+    if(!inH&&!inS){
+      h.attemptFail="noproxy";h.resp={from:"none",kind:"fail",code:"ERR",title:"ERR_CONNECTION_TIMED_OUT"};
+      h.sums.push({k:"sum_unsupported",p:{p:String(p)}},{k:"sum_measured"});return h;
+    }
+    if(r.scheme==="https"&&inH){
+      h.attemptFail="tls";h.resp={from:"none",kind:"fail",code:"ERR",title:"ERR_SSL_PROTOCOL_ERROR"};
+      h.sums.push({k:"sum_mismatch_https",p:{p:String(p)}},{k:"sum_measured"});return h;
+    }
+    if(r.scheme==="http"&&inS){
+      h.resp={from:"edge",kind:"fail",code:"400",title:"The plain HTTP request was sent to HTTPS port"};
+      h.sums.push({k:"sum_mismatch_http",p:{p:String(p)}},{k:"sum_measured"});return h;
+    }
+    if(NOCACHE.includes(p))h.sums.push({k:"sum_nocache",p:{p:String(p)}});
+    if(s.always&&s.mode!=="off"&&r.scheme==="http"){
+      h.resp={from:"edge",kind:"redirect",code:"301",title:"Moved Permanently",next:toHttps};
+      h.sums.push({k:"sum_always"});
+      if(p!==80)h.sums.push({k:"sum_always_other",p:{p:String(p)}});
+      return h;
+    }
+    let o,k;
+    if(s.mode==="off"){
+      if(r.scheme==="http"){o={scheme:"http",port:p};k="sum_off_http";}
+      else if(p===443){o={scheme:"http",port:80};k="sum_off_https";}
+      else{o={scheme:"http",port:p};k="sum_off_https_other";h.plainToTls=true;}
+    }
+    else if(s.mode==="flexible"){
+      if(r.scheme==="http"){o={scheme:"http",port:p};k="sum_flex_http";}
+      else if(p===443){o={scheme:"http",port:80};k="sum_flex_443";}
+      else{o={scheme:"https",port:p};h.verify="none";k="sum_flex_other";h.sums.push({k:"sum_flex_measured"});}
+    }else if(s.mode==="full"){
+      o={scheme:r.scheme,port:p};
+      if(r.scheme==="https"){h.verify="none";k="sum_full_https";}else k="sum_full_http";
+    }else if(s.mode==="strict"){
+      o={scheme:r.scheme,port:p};
+      if(r.scheme==="https"){h.verify="full";k="sum_strict_https";}else k="sum_strict_http";
+    }else{
+      o={scheme:"https",port:p===80?443:p};h.verify="full";k=p===80?"sum_pull_80":"sum_pull_other";
+    }
+    h.sums.push({k,p:{p:String(o.port)}});
+    if(s.originRule&&s.customPort!==o.port){h.sums.push({k:"sum_origin_rule",p:{from:String(o.port),p:String(s.customPort)}});o={scheme:o.scheme,port:s.customPort};h.plainToTls=false;}
+    h.o=o;
+    if(h.plainToTls){h.attemptFail="520";h.resp={from:"edge",kind:"fail",code:"520",title:"Web server returned an unknown error"};}
+    else if(o.scheme==="http"&&o.port===80&&!s.p80){h.attemptFail="521";h.resp={from:"edge",kind:"fail",code:"521",title:"Web server is down"};h.sums.push({k:"sum_521"});}
+    else if(o.scheme==="https"&&h.verify==="full"&&!s.cert){h.attemptFail="526";h.resp={from:"edge",kind:"fail",code:"526",title:"Invalid SSL certificate"};h.sums.push({k:"sum_526"});}
+    else{
+      if(o.scheme==="https"&&h.verify==="none"&&!s.cert)h.sums.push({k:"sum_selfsigned_ok"});
+      if(o.scheme==="http"&&o.port===80&&s.originRedirect){h.resp={from:"origin",kind:"redirect",code:"301",title:"Moved Permanently",next:toHttps};h.sums.push({k:"sum_origin_redirect"});}
+      else h.resp=ok;
+    }
+    return h;
+  }
+
+  function compute(s){
+    const hops=[],seen=new Set();let r=getReq(s.req),loop=false;
+    for(let i=0;i<6;i++){
+      const h=resolveHop(r,s),key=h.via+r.scheme+r.port;
+      if(seen.has(key)){h.repeat=true;hops.push(h);loop=true;break;}
+      seen.add(key);hops.push(h);
+      if(h.resp.kind==="redirect")r=h.resp.next;else break;
+    }
+    const last=hops[hops.length-1];
+    const final=loop?{kind:"fail",code:"ERR",title:"ERR_TOO_MANY_REDIRECTS"}:last.resp;
+    const landing=!loop&&last.resp.kind==="ok"?last:null;
+    const sums=[],sk=new Set();
+    hops.filter(h=>!h.repeat).forEach(h=>h.sums.forEach(x=>{const id=x.k+JSON.stringify(x.p||{});if(!sk.has(id)){sk.add(id);sums.push(x);}}));
+    if(loop){sums.push({k:"sum_loop"});if(s.proxy&&s.mode==="flexible")sums.push({k:"sum_loop_flex"});}
+    const redirects=hops.filter(h=>h.resp.kind==="redirect").length;
+    return {hops,loop,final,landing,sums,redirects};
+  }
+
+  function encKey(h){
+    if(!h.o)return null;
+    if(h.o.scheme==="http")return "enc_plain";
+    if(h.via==="direct")return "enc_browser";
+    return h.verify==="full"?"enc_verified":"enc_nocheck";
+  }
+  function respTag(resp){
+    if(resp.kind==="redirect")return "301 → "+resp.next.scheme.toUpperCase();
+    if(resp.code==="200")return "200 OK";
+    if(resp.code==="ERR")return "✕";
+    return resp.code;
+  }
+  function respParam(resp){
+    if(resp.kind==="redirect")return ISO("301 · Location: "+url(resp.next));
+    if(resp.code==="200")return ISO("200 OK");
+    return ISO(resp.code+" "+resp.title);
+  }
+  function respLook(resp){return resp.kind==="ok"?"ok":resp.kind==="redirect"?"warn":"fail";}
+
+  function buildSegs(res){
+    const segs=[];
+    res.hops.forEach((h,i)=>{
+      const direct=h.via==="direct";
+      segs.push({type:"req",path:direct?"d":"l1",port:slotOf(h.v.port),rev:false,look:h.v.scheme,tag:lab(h.v),hopStart:true,hop:h,
+        step:{k:direct?(i?"st_req_direct_new":"st_req_direct"):(i?"st_req_new":"st_req"),p:{r:ISO(lab(h.v))}},
+        end:h.attemptFail==="refused"?"burstO":(h.attemptFail==="noproxy"||h.attemptFail==="tls")?"burstE":(direct?"origin":"edge"),dur:direct?2.2:1.3,kind:i?"redirect":"normal"});
+      if(!direct&&h.o){
+        segs.push({type:"req",path:"l2",port:slotOf(h.o.port),rev:false,look:h.o.scheme,tag:lab(h.o),hop:h,
+          step:{k:"st_fwd",p:{r:ISO(lab(h.o))},enc:encKey(h),fail:h.attemptFail},end:h.attemptFail?"burstO":"origin",dur:1.5,kind:h.attemptFail?"fail":"normal"});
+      }
+      const look=respLook(h.resp),tag=respTag(h.resp),c=respParam(h.resp);
+      const sk=h.resp.kind==="redirect"?"redirect":h.resp.kind==="fail"?"fail":"normal";
+      if(!direct&&h.resp.from==="none"){
+        segs.push({type:"note",look:"fail",tag:"✕",hop:h,step:{k:h.attemptFail==="tls"?"st_tls":"st_noproxy",p:{p:String(h.v.port)}},end:"screen",dur:0.9,kind:"fail"});
+      }else if(!direct){
+        if(h.resp.from==="origin"){
+          segs.push({type:"resp",path:"l2",port:slotOf(h.o.port),rev:true,look,tag,hop:h,step:{k:"st_resp_oe",p:{c}},end:"edge",dur:1.2,kind:sk});
+        }
+        segs.push({type:"resp",path:"l1",port:slotOf(h.v.port),rev:true,look,tag,hop:h,step:{k:"st_resp_eb",p:{c}},end:"screen",dur:1.1,kind:sk});
+      }else if(h.resp.from==="origin"){
+        segs.push({type:"resp",path:"d",port:slotOf(h.v.port),rev:true,look,tag,hop:h,step:h.resp.cert?{k:"st_certwarn"}:{k:"st_resp_ob",p:{c}},end:"screen",dur:1.8,kind:sk});
+      }else{
+        segs.push({type:"note",look:"fail",tag:"✕",hop:h,step:{k:"st_refused"},end:"screen",dur:0.9,kind:"fail"});
+      }
+    });
+    if(res.loop)segs.push({type:"note",look:"fail",tag:"✕",step:{k:"st_loop"},end:"screen",dur:1,kind:"fail",loopEnd:true});
+    return segs;
+  }
+  function stepText(seg){
+    const st=seg.step;const p=Object.assign({},st.p||{});
+    if(st.enc)p.enc=t(st.enc);
+    let s=t(st.k,p);
+    if(st.fail)s+=" — "+t(st.fail==="521"?"st_fail521":st.fail==="520"?"st_fail520":"st_fail526");
+    return s;
+  }
+
+  const modeSeg=$("#modeSeg"),reqSeg=$("#reqSeg"),speedSeg=$("#speedSeg");
+  MODE_KEYS.forEach((k,i)=>{const b=document.createElement("button");b.type="button";b.id="mode-"+k;b.textContent=MODES[k];b.title=String(i+1);b.addEventListener("click",()=>{state.mode=k;applyState();});modeSeg.appendChild(b);});
+  Object.keys(REQS).forEach(k=>{const b=document.createElement("button");b.type="button";b.id="req-"+k;b.textContent=lab(getReq(k));b.title=REQS[k].k;b.addEventListener("click",()=>{state.req=k;applyState();});reqSeg.appendChild(b);});
+  SPEEDS.forEach(v=>{const b=document.createElement("button");b.type="button";b.id="speed-"+String(v).replace(".","_");b.textContent=v+"×";b.addEventListener("click",()=>{state.speed=v;syncButtons();});speedSeg.appendChild(b);});
+  const opt={proxy:$("#optProxy"),always:$("#optAlways"),originRule:$("#optRule"),originRedirect:$("#optOrigin"),cert:$("#optCert"),p80:$("#optP80")};
+  ["http","https"].forEach(sc=>$("#cs-"+sc).addEventListener("click",()=>{state.customScheme=sc;state.req="custom";applyState();}));
+  const portIn=$("#customPort");
+  portIn.addEventListener("input",()=>{const n=parseInt(portIn.value,10);if(n>=1&&n<=65535&&n!==state.customPort){state.customPort=n;state.req="custom";applyState();}});
+  portIn.addEventListener("change",()=>{portIn.value=String(state.customPort);});
+  Object.keys(opt).forEach(k=>opt[k].addEventListener("change",()=>{state[k]=opt[k].checked;applyState();}));
+  $("#lang-fa").addEventListener("click",()=>setLang("fa"));
+  $("#lang-en").addEventListener("click",()=>setLang("en"));
+  $("#btnPlay").addEventListener("click",()=>{state.playing=!state.playing;budget=0;syncButtons();});
+  $("#btnNext").addEventListener("click",()=>nextStep());
+  $("#btnRestart").addEventListener("click",()=>startTrip());
+
+  function toggle(k){if(opt[k].disabled)return;state[k]=!state[k];opt[k].checked=state[k];applyState();}
+  document.addEventListener("keydown",e=>{
+    if(e.metaKey||e.ctrlKey||e.altKey)return;
+    const c=e.code;
+    const tg=e.target&&e.target.tagName;
+    if(c==="Space"&&(tg==="BUTTON"||tg==="INPUT"))return;
+    if(tg==="INPUT"&&e.target.type==="number")return;
+    const m=/^Digit([1-5])$/.exec(c);
+    if(m){state.mode=MODE_KEYS[+m[1]-1];applyState();return;}
+    const rk=Object.keys(REQS).find(x=>REQS[x].code===c);
+    if(rk){if(reqAllowed(rk,state)){state.req=rk;applyState();}return;}
+    if(c==="KeyP")return toggle("proxy");
+    if(c==="KeyH")return toggle("always");
+    if(c==="KeyO")return toggle("originRedirect");
+    if(c==="KeyL")return setLang(state.lang==="fa"?"en":"fa");
+    if(c==="KeyN")return nextStep();
+    if(c==="KeyS")return startTrip();
+    if(c==="Space"){e.preventDefault();state.playing=!state.playing;budget=0;syncButtons();}
+  });
+
+  function syncButtons(){
+    MODE_KEYS.forEach(k=>{const b=$("#mode-"+k);b.setAttribute("aria-pressed",String(state.mode===k));});
+    modeSeg.classList.toggle("dim",!state.proxy);
+    Object.keys(REQS).forEach(k=>{const b=$("#req-"+k);b.setAttribute("aria-pressed",String(state.req===k));b.disabled=!reqAllowed(k,state);});
+    SPEEDS.forEach(v=>$("#speed-"+String(v).replace(".","_")).setAttribute("aria-pressed",String(state.speed===v)));
+    const mn=$("#modeNote");mn.hidden=state.proxy;mn.textContent=t("note_mode_direct");
+    const rn=$("#reqNote"),nk=reqNoteKey(state);rn.hidden=!nk;if(nk)rn.textContent=t(nk);
+    opt.always.disabled=!state.proxy||state.mode==="off";
+    opt.originRule.disabled=!state.proxy;
+    $("#req-custom").textContent=t("custom")+" · "+lab(getReq("custom"));
+    $("#cs-http").setAttribute("aria-pressed",String(state.customScheme==="http"));
+    $("#cs-https").setAttribute("aria-pressed",String(state.customScheme==="https"));
+    $("#t-sw-rule-s").textContent=t("sw_rule_s",{p:state.customPort});
+    $("#lang-fa").setAttribute("aria-pressed",String(state.lang==="fa"));
+    $("#lang-en").setAttribute("aria-pressed",String(state.lang==="en"));
+    const bp=$("#btnPlay");bp.setAttribute("aria-pressed",String(state.playing));bp.textContent=state.playing?t("play"):t("paused");
+  }
+
+  function setStaticText(){
+    const ids={"t-title":"title","t-lead":"lead","t-h-proxy":"h_proxy","t-sw-proxy":"sw_proxy","t-sw-proxy-s":"sw_proxy_s","t-h-mode":"h_mode","t-h-req":"h_req","t-h-set":"h_set","t-sw-always-s":"sw_always_s","t-sw-origin":"sw_origin","t-sw-rule":"sw_rule","t-custom-l":"custom_l","t-sw-origin-s":"sw_origin_s","t-sw-cert":"sw_cert","t-sw-cert-s":"sw_cert_s","t-sw-p80":"sw_p80","t-sw-p80-s":"sw_p80_s","t-row-first":"row_first","t-row-redir":"row_redir","t-row-final":"row_final","t-redir-h":"redir_h","t-redir-p":"redir_p","t-h-steps":"h_steps","btnNext":"next","btnRestart":"restart","nv-overview":"nav_overview","nv-visitor":"nav_visitor","nv-edge":"nav_edge","nv-origin":"nav_origin","nv-follow":"nav_follow"};
+    Object.keys(ids).forEach(id=>{$("#"+id).textContent=t(ids[id]);});
+    $("#keys").innerHTML=t("keys")+"<br>"+t("nav_help");
+    [["dp-up","nav_fwd"],["dp-down","nav_back"],["dp-left","nav_left"],["dp-right","nav_right"],["dp-zin","nav_in"],["dp-zout","nav_out"],["dp-home","nav_home"]].forEach(([id,k])=>{const b=$("#"+id);b.title=t(k);b.setAttribute("aria-label",t(k));});
+    const lg=$("#legend");lg.replaceChildren();
+    [["dot bg-http","lg_http"],["ring bg-https","lg_https"],["env bg-ok","lg_200"],["env bg-warn","lg_301"],["env bg-fail","lg_err"]].forEach(([c,k])=>{const s=document.createElement("span");const w=document.createElement("i");w.className="sw "+c;s.append(w,document.createTextNode(t(k)));lg.appendChild(s);});
+    document.title=t("title");
+    const dir=state.lang==="fa"?"rtl":"ltr";
+    $("#app").setAttribute("dir",dir);
+    document.documentElement.lang=state.lang;
+  }
+
+  function setLang(l){
+    state.lang=l;
+    try{localStorage.setItem("cfpl-lang",l);}catch(e){}
+    setStaticText();syncButtons();renderReadout(current);renderSteps();
+    if(three)three.setLang();
+  }
+
+  function badge(text,cls){const s=document.createElement("span");s.className="badge "+cls;s.textContent=text;return s;}
+  function tag(text,cls){const s=document.createElement("span");s.className="tag "+(cls||"");s.textContent=text;return s;}
+  function chip(text,cls){const s=document.createElement("span");s.className=cls||"";s.textContent=text;return s;}
+
+  function renderReadout(res){
+    const first=res.hops[0];
+    const rf=$("#rowFirst");rf.replaceChildren(badge(lab(first.v),"c-"+first.v.scheme),tag(t(first.v.scheme==="https"?"enc_tls":"enc_plain")));
+    const rr=$("#rowRedir");rr.replaceChildren();
+    if(res.loop)rr.append(badge("∞","c-fail"),tag(t("redir_loop"),"c-fail"));
+    else if(res.redirects)rr.append(badge(String(res.redirects),"c-warn"));
+    else rr.append(tag(t("redir_none")));
+    const rl=$("#rowFinal");rl.replaceChildren();
+    if(res.landing)rl.append(badge(lab(res.landing.o),"c-"+res.landing.o.scheme),tag(t(encKey(res.landing))));
+    else rl.append(tag(t("none_reach"),"c-fail"));
+    const f=res.final;
+    const sc=$("#stCode");sc.textContent=f.code;sc.className="code "+(f.kind==="ok"?"c-ok":"c-fail");
+    $("#stTitle").textContent=f.title;
+    const ex=$("#stText");ex.replaceChildren();
+    res.sums.forEach(x=>{const p=document.createElement("p");p.textContent=t(x.k,x.p);ex.appendChild(p);});
+    $("#redirBox").hidden=!res.redirects;
+    const hf=$("#hudFlow");hf.replaceChildren();
+    res.hops.forEach((h,i)=>{
+      if(i)hf.append(chip("⟳","hopsep"));
+      hf.append(chip("Browser "+lab(h.v),"c-"+h.v.scheme));
+      if(h.via==="edge"){
+        hf.append(chip("→","sep"),chip("Edge","c-amber"));
+        if(h.resp.from==="edge"&&h.resp.kind!=="fail"){hf.append(chip("↩ 301","c-warn"));return;}
+      }
+      if(h.o){
+        hf.append(chip("→","sep"),chip("Origin "+lab(h.o),h.attemptFail?"c-fail":"c-"+h.o.scheme));
+        if(h.resp.kind==="redirect")hf.append(chip("↩ 301","c-warn"));
+      }
+    });
+    $("#hudMode").textContent=state.proxy?"SSL/TLS: "+MODES[state.mode]:"DNS only · proxy off";
+    $("#hudMode").className="chip "+(state.proxy?"c-amber":"c-muted");
+    const hc=$("#hudCode");hc.textContent=f.code==="ERR"?f.title:f.code+" "+f.title;hc.className="chip "+(f.kind==="ok"?"c-ok":"c-fail");
+  }
+
+  let current=compute(state),trip=null,budget=0,three=null;
+  const stepsEl=$("#steps");
+  function renderSteps(){
+    stepsEl.replaceChildren();
+    if(!trip)return;
+    trip.segs.forEach(seg=>{const li=document.createElement("li");li.className="k-"+seg.kind;const sp=document.createElement("span");sp.textContent=stepText(seg);li.appendChild(sp);stepsEl.appendChild(li);});
+    markSteps();
+  }
+  function markSteps(){
+    if(!trip)return;
+    [...stepsEl.children].forEach((li,i)=>{li.classList.toggle("done",i<trip.idx);li.classList.toggle("active",!trip.done&&i===trip.idx&&(three!==null));});
+  }
+  function startTrip(){
+    if(three)three.clearSeg();
+    trip={segs:buildSegs(current),idx:0,t:0,done:false,wait:0};
+    budget=0;
+    if(!three){trip.idx=trip.segs.length;trip.done=true;}
+    renderSteps();
+    if(three){three.resetScreen();three.beginSeg(trip.segs[0]);}
+  }
+  function nextStep(){
+    if(!three)return;
+    if(!trip||trip.done)startTrip();
+    state.playing=false;budget=1;syncButtons();
+  }
+  function tick(raw){
+    if(!trip)return;
+    if(trip.done){if(state.playing){trip.wait-=raw;if(trip.wait<=0)startTrip();}return;}
+    if(!(state.playing||budget>0))return;
+    const seg=trip.segs[trip.idx];
+    trip.t+=raw*state.speed/seg.dur;
+    three.moveSeg(seg,Math.min(trip.t,1));
+    if(trip.t>=1){
+      three.endSeg(seg);
+      trip.idx++;trip.t=0;
+      if(!state.playing)budget=Math.max(0,budget-1);
+      if(trip.idx>=trip.segs.length){trip.done=true;trip.wait=1.8;}
+      else three.beginSeg(trip.segs[trip.idx]);
+      markSteps();
+    }
+  }
+
+  function applyState(){
+    if(!reqAllowed(state.req,state))state.req="h80";
+    if(state.mode==="off"&&state.always){state.always=false;opt.always.checked=false;}
+    current=compute(state);
+    syncButtons();renderReadout(current);
+    if(three)three.update(current);
+    startTrip();
+  }
+
+  function initThree(){
+    if(typeof THREE==="undefined")throw new Error("three");
+    const canvas=$("#scene"),stage=$("#stage");
+    const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    renderer.setClearColor(0x0d1220,1);
+    const scene=new THREE.Scene();
+    scene.fog=new THREE.Fog(0x0d1220,24,52);
+    const camera=new THREE.PerspectiveCamera(42,1,0.1,200);
+    const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+    const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    scene.add(new THREE.HemisphereLight(0xc9d8ff,0x141a2b,0.8));
+    const dirL=new THREE.DirectionalLight(0xffffff,0.75);dirL.position.set(6,12,9);scene.add(dirL);
+    const edgeLight=new THREE.PointLight(HEX.amber,1.1,10);edgeLight.position.set(0,2.4,2.4);scene.add(edgeLight);
+
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(90,44),new THREE.MeshStandardMaterial({color:0x0f1628,roughness:1}));
+    ground.rotation.x=-Math.PI/2;scene.add(ground);
+    const grid=new THREE.GridHelper(90,90,0x26314f,0x182139);grid.position.y=0.003;scene.add(grid);
+
+    const tracked=[];
+    function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+    function drawLabel(sp,text,o2){
+      const d=sp.userData;if(text!==undefined)d.text=text;if(o2)Object.assign(d.opt,o2);
+      const o=d.opt,fs=64,c=document.createElement("canvas"),ctx=c.getContext("2d");
+      const rtl=/[؀-ۿ]/.test(d.text);
+      const font=(o.weight||700)+" "+fs+"px "+(o.mono&&!rtl?'"JetBrains Mono", ui-monospace, monospace':'"Vazirmatn", system-ui, sans-serif');
+      ctx.font=font;
+      const padX=o.bg?40:12,w=Math.ceil(ctx.measureText(d.text).width)+padX*2,h=fs+(o.bg?38:22);
+      c.width=w;c.height=h;ctx.font=font;ctx.direction=rtl?"rtl":"ltr";
+      if(o.bg){roundRect(ctx,3,3,w-6,h-6,Math.min(24,(h-6)/2));ctx.fillStyle=o.bg;ctx.fill();if(o.border){ctx.lineWidth=5;ctx.strokeStyle=o.border;ctx.stroke();}}
+      ctx.fillStyle=o.color||CSS.fg;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(d.text,w/2,h/2+3);
+      const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+      if(sp.material.map)sp.material.map.dispose();
+      sp.material.map=tex;sp.material.needsUpdate=true;
+      const H=o.h||0.4;sp.scale.set(H*w/h,H,1);
+    }
+    function makeSprite(text,o){
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,depthWrite:false}));
+      sp.renderOrder=10;sp.userData={text,opt:Object.assign({},o)};drawLabel(sp);return sp;
+    }
+    function makeLabel(text,o,pos){const sp=makeSprite(text,o);if(pos)sp.position.copy(pos);scene.add(sp);tracked.push(sp);return sp;}
+    function disposeSprite(sp){if(sp.material.map)sp.material.map.dispose();sp.material.dispose();}
+
+    const gc=document.createElement("canvas");gc.width=gc.height=128;
+    const gx=gc.getContext("2d");const grd=gx.createRadialGradient(64,64,0,64,64,64);
+    grd.addColorStop(0,"rgba(255,255,255,1)");grd.addColorStop(0.35,"rgba(255,255,255,.35)");grd.addColorStop(1,"rgba(255,255,255,0)");
+    gx.fillStyle=grd;gx.fillRect(0,0,128,128);
+    const glowTex=new THREE.CanvasTexture(gc);
+
+    const shell=new THREE.MeshStandardMaterial({color:0x2b3654,metalness:0.5,roughness:0.45});
+    const visitor=new THREE.Group();visitor.position.set(-7.2,0,0);visitor.rotation.y=0.38;scene.add(visitor);
+    const base=new THREE.Mesh(new THREE.BoxGeometry(2.4,0.14,1.6),shell);base.position.y=0.07;visitor.add(base);
+    const hinge=new THREE.Group();hinge.position.set(0,0.14,-0.78);hinge.rotation.x=-0.2;visitor.add(hinge);
+    const lid=new THREE.Mesh(new THREE.BoxGeometry(2.4,1.6,0.08),shell);lid.position.y=0.8;hinge.add(lid);
+    const scrCanvas=document.createElement("canvas");scrCanvas.width=512;scrCanvas.height=320;
+    const scrTex=new THREE.CanvasTexture(scrCanvas);scrTex.minFilter=THREE.LinearFilter;
+    const screen=new THREE.Mesh(new THREE.PlaneGeometry(2.18,1.36),new THREE.MeshBasicMaterial({map:scrTex}));screen.position.set(0,0.8,0.045);hinge.add(screen);
+    let scrState={url:"https://example.com/",scheme:"https",body:"",color:CSS.muted};
+    function fitFont(ctx,text,max,size,family,weight){let s=size;do{ctx.font=weight+" "+s+"px "+family;if(ctx.measureText(text).width<=max)break;s-=2;}while(s>12);return s;}
+    function drawScreen(){
+      const c=scrCanvas.getContext("2d"),st=scrState;
+      c.fillStyle="#16223d";c.fillRect(0,0,512,320);
+      roundRect(c,22,22,468,60,30);c.fillStyle="#0b1326";c.fill();
+      const col=st.scheme==="https"?CSS.https:CSS.http;
+      c.fillStyle=col;
+      if(st.scheme==="https"){c.fillRect(46,50,22,18);c.lineWidth=4;c.strokeStyle=col;c.beginPath();c.arc(57,50,7,Math.PI,0);c.stroke();}
+      else{c.beginPath();c.moveTo(57,38);c.lineTo(69,66);c.lineTo(45,66);c.closePath();c.fill();c.fillStyle="#0b1326";c.fillRect(55.5,46,3,11);c.fillRect(55.5,59,3,3);}
+      const mono='"JetBrains Mono", ui-monospace, monospace';
+      fitFont(c,st.url,390,26,mono,700);c.fillStyle=col;c.textAlign="left";c.textBaseline="middle";c.fillText(st.url,84,53);
+      c.fillStyle="#22305a";c.fillRect(40,112,432,10);c.fillRect(40,136,300,10);
+      if(st.body){fitFont(c,st.body,440,44,mono,700);c.fillStyle=st.color;c.textAlign="center";c.fillText(st.body,256,232);}
+      scrTex.needsUpdate=true;
+    }
+    const visitorAnchor=V(-5.75,1.05,0.55);
+    const vNode=new THREE.Mesh(new THREE.SphereGeometry(0.09,16,16),new THREE.MeshBasicMaterial({color:0xe8ecf4}));vNode.position.copy(visitorAnchor);scene.add(vNode);
+
+    const edge=new THREE.Group();edge.position.set(0,2.05,0);scene.add(edge);
+    const cloudMat=new THREE.MeshStandardMaterial({color:HEX.amber,emissive:0x7a3d05,emissiveIntensity:0.3,roughness:0.4,metalness:0.05});
+    const cloud=new THREE.Group();cloud.scale.set(1,1,0.72);edge.add(cloud);
+    [[0,0.32,0,1.0],[-0.98,-0.08,0,0.66],[0.92,-0.02,0,0.74]].forEach(([x,y,z,r])=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,40,28),cloudMat);m.position.set(x,y,z);cloud.add(m);});
+    const cbase=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.62,1.92,40),cloudMat);cbase.rotation.z=Math.PI/2;cbase.position.set(0,-0.12,0);cloud.add(cbase);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,1.3,12),shell);pole.position.set(0,0.65,0);scene.add(pole);
+    const disc=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.9,0.08,40),shell);disc.position.set(0,0.04,0);scene.add(disc);
+    const plateMat=new THREE.MeshStandardMaterial({color:0x1a2338,metalness:0.4,roughness:0.5});
+    const ePlate=new THREE.Mesh(new THREE.BoxGeometry(0.7,2.55,0.1),plateMat);ePlate.position.set(-1.75,1.95,1.12);scene.add(ePlate);
+    const edgeExit=V(1.75,2.0,0.9);
+    const xNode=new THREE.Mesh(new THREE.SphereGeometry(0.12,16,16),new THREE.MeshBasicMaterial({color:HEX.amber}));xNode.position.copy(edgeExit);scene.add(xNode);
+
+    const origin=new THREE.Group();origin.position.set(7.2,0,0);scene.add(origin);
+    const rack=new THREE.Mesh(new THREE.BoxGeometry(1.7,3.7,1.4),new THREE.MeshStandardMaterial({color:0x1d2640,metalness:0.45,roughness:0.5}));rack.position.y=1.85;origin.add(rack);
+    const leds=[];
+    for(let i=0;i<8;i++){
+      const s=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.05,0.02),new THREE.MeshStandardMaterial({color:0x2c3a5d}));s.position.set(0,0.45+i*0.42,0.71);origin.add(s);
+      const led=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,8),new THREE.MeshBasicMaterial({color:HEX.https}));led.position.set(0.66,0.62+i*0.42,0.72);origin.add(led);leds.push(led);
+    }
+    const oPlate=new THREE.Mesh(new THREE.BoxGeometry(0.62,2.55,0.06),plateMat);oPlate.position.set(6.6,1.95,0.76);scene.add(oPlate);
+
+    const ringGeo=new THREE.TorusGeometry(0.16,0.045,12,40);
+    function makeSocket(pos,port,side){
+      const mat=new THREE.MeshBasicMaterial({color:HEX.idle});
+      const ring=new THREE.Mesh(ringGeo,mat);ring.position.copy(pos);scene.add(ring);
+      const label=makeLabel(":"+port,{mono:true,h:0.3,color:CSS.muted,bg:CSS.chip},pos.clone().add(V(side==="edge"?0.62:0.68,0,0.05)));
+      return {ring,mat,label,pos,pulse:0};
+    }
+    const eSock={},oSock={};
+    SLOTS.forEach((p,i)=>{const y=1.0+i*0.52;eSock[p]=makeSocket(V(-1.75,y,1.2),p,"edge");oSock[p]=makeSocket(V(6.6,y,0.82),p,"origin");});
+
+    const curves={l1:{},l2:{},d:{}},tubes={l1:{},l2:{},d:{}};
+    function makeTube(curve){const m=new THREE.MeshBasicMaterial({color:HEX.idle,transparent:true,opacity:0.18});const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,72,0.03,8,false),m);scene.add(mesh);return {mesh,m};}
+    SLOTS.forEach((p,i)=>{
+      const a=visitorAnchor,b=eSock[p].pos;
+      curves.l1[p]=new THREE.QuadraticBezierCurve3(a.clone(),a.clone().lerp(b,0.5).add(V(0,1.1,0.5)),b.clone());tubes.l1[p]=makeTube(curves.l1[p]);
+      const c=edgeExit,d=oSock[p].pos;
+      curves.l2[p]=new THREE.QuadraticBezierCurve3(c.clone(),c.clone().lerp(d,0.5).add(V(0,1.3,0.2)),d.clone());tubes.l2[p]=makeTube(curves.l2[p]);
+      curves.d[p]=new THREE.QuadraticBezierCurve3(a.clone(),V(0.4,0.2+i*0.06,5.2),d.clone());tubes.d[p]=makeTube(curves.d[p]);
+    });
+
+    const lblVisitor=makeLabel("",{h:0.42,color:CSS.fg},V(-7.2,2.55,0.2));
+    const lblDns=makeLabel("",{mono:true,h:0.26,color:CSS.muted,bg:CSS.chip},V(-7.0,0.32,1.5));
+    const lblEdge=makeLabel("",{h:0.42,color:CSS.amber},V(0,3.95,0));
+    const lblMode=makeLabel("",{mono:true,h:0.32,color:CSS.amber,bg:CSS.chip,border:CSS.amber},V(0,3.48,0));
+    const lblOrigin=makeLabel("",{h:0.42,color:CSS.fg},V(7.2,4.45,0));
+    const lblCert=makeLabel("",{mono:true,h:0.27,color:CSS.https,bg:CSS.chip},V(7.2,4.0,0));
+    const lblAlways=makeLabel("Always Use HTTPS",{mono:true,h:0.25,color:CSS.warn,bg:CSS.chip,border:CSS.warn},V(-1.75,3.55,1.2));
+    const lblORedir=makeLabel("301 → HTTPS",{mono:true,h:0.25,color:CSS.warn,bg:CSS.chip,border:CSS.warn},V(8.25,1.05,0.82));
+    const lblORule=makeLabel("",{mono:true,h:0.25,color:CSS.amber,bg:CSS.chip,border:CSS.amber},V(3.9,3.9,0.6));
+    const lblEnc=makeLabel("",{mono:true,h:0.28,bg:CSS.chip},V(0,0,0));lblEnc.visible=false;
+
+    const coreGeo=new THREE.SphereGeometry(0.13,20,16),cageGeo=new THREE.IcosahedronGeometry(0.26,0),envGeo=new THREE.BoxGeometry(0.46,0.3,0.06);
+    let actObj=null,actTube=null;
+    const effects=[];
+    function makeObj(seg){
+      const g=new THREE.Group();const look=seg.look;const col=HEX[look],css=CSS[look];
+      const parts=[];
+      if(seg.type==="req"){
+        const core=new THREE.Mesh(coreGeo,new THREE.MeshBasicMaterial({color:col}));g.add(core);parts.push(core);
+        if(look==="https"){const cage=new THREE.Mesh(cageGeo,new THREE.MeshBasicMaterial({color:HEX.https,wireframe:true}));g.add(cage);parts.push(cage);g.userData.cage=cage;}
+      }else{
+        const env=new THREE.Mesh(envGeo,new THREE.MeshBasicMaterial({color:col}));g.add(env);parts.push(env);g.userData.env=env;
+      }
+      const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:col,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));glow.scale.set(0.95,0.95,1);g.add(glow);parts.push(glow);
+      const tg=makeSprite(seg.tag,{mono:true,h:0.26,color:css,bg:CSS.chip,border:css});tg.position.set(0,0.42,0);g.add(tg);
+      g.userData.parts=parts;g.userData.tag=tg;
+      scene.add(g);return g;
+    }
+    function disposeObj(g){if(!g)return;scene.remove(g);g.userData.parts.forEach(p=>p.material.dispose());disposeSprite(g.userData.tag);}
+    function addBurst(pos,col){
+      const m=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,12),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.9}));
+      m.position.copy(pos);scene.add(m);effects.push({m,t:0});
+    }
+    let edgePulse=0;
+    function pulseSock(s){s.pulse=1;}
+
+    function pathEnd(seg){const c=curves[seg.path][seg.port];return seg.rev?c.getPointAt(0):c.getPointAt(1);}
+    function portScheme(p){return p===80||p===8080?"http":"https";}
+    let used={l1:new Map(),l2:new Map(),d:new Map()};
+
+    function setTubeIdle(){
+      ["l1","l2","d"].forEach(k=>SLOTS.forEach(p=>{
+        const tb=tubes[k][p];const show=k==="d"?!state.proxy:state.proxy;tb.mesh.visible=show;
+        if(used[k].has(p)){tb.m.color.setHex(HEX[used[k].get(p)]);tb.m.opacity=0.5;}else{tb.m.color.setHex(HEX.idle);tb.m.opacity=0.16;}
+      }));
+    }
+
+    function update(res){
+      used={l1:new Map(),l2:new Map(),d:new Map()};
+      res.hops.forEach(h=>{if(h.via==="edge"){used.l1.set(slotOf(h.v.port),h.v.scheme);if(h.o)used.l2.set(slotOf(h.o.port),h.o.scheme);}else used.d.set(slotOf(h.v.port),h.v.scheme);});
+      setTubeIdle();
+      const cp=state.customPort,cUnsup=!HTTP_PORTS.includes(cp)&&!HTTPS_PORTS.includes(cp);
+      SLOTS.forEach(p=>{
+        const num=p==="c"?cp:p;
+        const es=eSock[p],eSch=used.l1.get(p),eBad=p==="c"&&cUnsup;
+        const ec=eSch?(eBad?CSS.fail:CSS[eSch]):(eBad?CSS.fail:CSS.muted);
+        es.mat.color.setHex(eSch?(eBad?HEX.fail:HEX[eSch]):(eBad?0x8a2238:HEX.idle));
+        drawLabel(es.label,eBad?":"+num+" ✕":":"+num,{color:ec,border:eSch||eBad?ec:null});
+        es.ring.visible=es.label.visible=state.proxy;
+        const closed=p===80&&!state.p80,oSch=used.l2.get(p)||used.d.get(p),os=oSock[p];
+        const oc=closed?CSS.fail:oSch?CSS[oSch]:CSS.muted;
+        os.mat.color.setHex(closed?0x8a2238:oSch?HEX[oSch]:HEX.idle);
+        drawLabel(os.label,closed?":80 closed":":"+num,{color:oc,border:oSch||closed?oc:null});
+      });
+      drawLabel(lblORule,"Origin Rule → :"+cp);
+      lblORule.visible=state.proxy&&state.originRule;
+      ePlate.visible=xNode.visible=state.proxy;
+      cloudMat.color.setHex(state.proxy?HEX.amber:0x4b5368);
+      cloudMat.emissive.setHex(state.proxy?0x7a3d05:0x000000);
+      edgeLight.intensity=state.proxy?1.1:0;
+      drawLabel(lblMode,state.proxy?"SSL/TLS: "+MODES[state.mode]:"DNS only · proxy off",{color:state.proxy?CSS.amber:CSS.muted,border:state.proxy?CSS.amber:CSS.muted});
+      drawLabel(lblEdge,undefined,{color:state.proxy?CSS.amber:CSS.muted});
+      drawLabel(lblDns,state.proxy?"DNS → Cloudflare IP":"DNS → origin IP",{color:state.proxy?CSS.amber:CSS.fg});
+      drawLabel(lblCert,state.cert?"cert: trusted CA":"cert: self-signed",{color:state.cert?CSS.https:CSS.warn});
+      lblAlways.visible=state.proxy&&state.always&&state.mode!=="off";
+      lblORedir.visible=state.originRedirect;
+      leds.forEach(l=>l.material.color.setHex(res.final.kind==="ok"?HEX.https:HEX.fail));
+    }
+
+    function clearSeg(){disposeObj(actObj);actObj=null;lblEnc.visible=false;actTube=null;setTubeIdle();}
+    function resetScreen(){scrState={url:url(current.hops[0].v),scheme:current.hops[0].v.scheme,body:"",color:CSS.muted};drawScreen();}
+    function beginSeg(seg){
+      disposeObj(actObj);actObj=null;
+      setTubeIdle();
+      if(seg.hopStart){scrState={url:url(seg.hop.v),scheme:seg.hop.v.scheme,body:"…",color:CSS.muted};drawScreen();}
+      if(seg.type==="note")return;
+      const tb=tubes[seg.path][seg.port];tb.m.opacity=1;actTube=tb;
+      actObj=makeObj(seg);
+      const c=curves[seg.path][seg.port];actObj.position.copy(c.getPointAt(seg.rev?1:0));
+      if(seg.type==="req"){
+        const ek=seg.path==="l1"||seg.path==="d"?(seg.look==="https"?"TLS":"plaintext HTTP"):(seg.hop.o.scheme==="http"?"plaintext HTTP":seg.hop.verify==="full"?"TLS · cert verified":"TLS · no cert check");
+        const cs=CSS[seg.look];
+        drawLabel(lblEnc,ek,{color:cs,border:cs});
+        lblEnc.position.copy(c.getPointAt(0.5)).add(V(0,seg.path==="d"?-0.45:0.45,0));lblEnc.visible=true;
+      }
+    }
+    function moveSeg(seg,tt){
+      if(seg.type==="note"||!actObj)return;
+      const c=curves[seg.path][seg.port];
+      actObj.position.copy(c.getPointAt(seg.rev?1-tt:tt));
+      if(actObj.userData.cage){actObj.userData.cage.rotation.x+=0.03;actObj.userData.cage.rotation.y+=0.04;}
+      if(actObj.userData.env){actObj.userData.env.rotation.y=Math.sin(tt*Math.PI*2)*0.4;}
+    }
+    function endSeg(seg){
+      if(seg.type!=="note"){
+        const p=pathEnd(seg);
+        if(seg.end==="edge"){edgePulse=1;if(seg.path==="l1")pulseSock(eSock[seg.port]);}
+        if(seg.end==="origin")pulseSock(oSock[seg.port]);
+        if(seg.end==="burstO"){addBurst(p,HEX.fail);pulseSock(oSock[seg.port]);}
+        if(seg.end==="burstE"){addBurst(p,HEX.fail);pulseSock(eSock[seg.port]);}
+      }
+      if(seg.end==="screen"){
+        const h=seg.hop;
+        let body,color;
+        if(seg.loopEnd){body="ERR_TOO_MANY_REDIRECTS";color=CSS.fail;}
+        else if(h.resp.kind==="redirect"){body="301 → "+url(h.resp.next);color=CSS.warn;}
+        else if(h.resp.kind==="ok"){body="200 OK";color=CSS.ok;}
+        else{body=h.resp.code==="ERR"?h.resp.title:h.resp.code+" "+h.resp.title;color=CSS.fail;}
+        scrState.body=body;scrState.color=color;drawScreen();
+      }
+      disposeObj(actObj);actObj=null;
+    }
+
+    function setLang(){drawLabel(lblVisitor,t("v_visitor"));drawLabel(lblEdge,t("v_edge"));drawLabel(lblOrigin,t("v_origin"));}
+
+    const target=V(0,1.9,0.6);
+    const cam={theta:0.16,phi:1.14,zoom:1};
+    const ZMIN=0.25,ZMAX=1.9;
+    const VIEWS={
+      overview:{t:[0,1.9,0.6],theta:0.16,phi:1.14,zoom:1},
+      visitor:{t:[-6.9,1.3,0.6],theta:0.45,phi:1.2,zoom:0.4},
+      edge:{t:[-0.7,2.2,0.9],theta:0.12,phi:1.16,zoom:0.46},
+      origin:{t:[6.9,2.0,0.6],theta:-0.32,phi:1.2,zoom:0.46}
+    };
+    let baseR=15,userMoved=false,follow=false,fly=null;
+    const held=new Set(),hold={x:0,z:0,zoom:0};
+    function placeCamera(){
+      const r=baseR*cam.zoom;
+      camera.position.set(target.x+r*Math.sin(cam.phi)*Math.sin(cam.theta),target.y+r*Math.cos(cam.phi),target.z+r*Math.sin(cam.phi)*Math.cos(cam.theta));
+      camera.lookAt(target);
+    }
+    function clampTarget(){
+      target.x=Math.max(-15,Math.min(15,target.x));
+      target.y=Math.max(0.3,Math.min(5,target.y));
+      target.z=Math.max(-9,Math.min(10,target.z));
+    }
+    function setZoom(z){cam.zoom=Math.min(ZMAX,Math.max(ZMIN,z));userMoved=true;}
+    function pan(dx,dz){
+      const r=baseR*cam.zoom;
+      target.x+=(Math.cos(cam.theta)*dx-Math.sin(cam.theta)*dz)*r;
+      target.z+=(-Math.sin(cam.theta)*dx-Math.cos(cam.theta)*dz)*r;
+      clampTarget();userMoved=true;fly=null;
+    }
+    function setFollow(on){follow=on;const b=$("#nv-follow");b.setAttribute("aria-pressed",String(on));if(on){fly=null;userMoved=true;if(cam.zoom>0.6)setZoom(0.55);}}
+    function markView(name){document.querySelectorAll("#navViews [data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===name)));}
+    function flyTo(v,name){
+      setFollow(false);
+      fly={t:0,from:{t:target.clone(),theta:cam.theta,phi:cam.phi,zoom:cam.zoom},to:{t:V(v.t[0],v.t[1],v.t[2]),theta:v.theta,phi:v.phi,zoom:v.zoom}};
+      userMoved=name!=="overview";
+      markView(name||"");
+    }
+    function stepFly(dt){
+      if(!fly)return;
+      fly.t=Math.min(1,fly.t+dt/(reduceMotion?0.05:0.9));
+      const x=fly.t,e=x<0.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+      target.lerpVectors(fly.from.t,fly.to.t,e);
+      let dth=fly.to.theta-fly.from.theta;dth=Math.atan2(Math.sin(dth),Math.cos(dth));
+      cam.theta=fly.from.theta+dth*e;
+      cam.phi=fly.from.phi+(fly.to.phi-fly.from.phi)*e;
+      cam.zoom=fly.from.zoom+(fly.to.zoom-fly.from.zoom)*e;
+      if(fly.t>=1)fly=null;
+    }
+
+    const pointers=new Map();let pinch=null,dragMode="orbit";
+    canvas.addEventListener("contextmenu",e=>e.preventDefault());
+    canvas.addEventListener("pointerdown",e=>{
+      canvas.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size===1)dragMode=(e.button===2||e.button===1||e.shiftKey)?"pan":"orbit";
+      if(pointers.size===2){const [a,b]=[...pointers.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),z:cam.zoom,mx:(a.x+b.x)/2,my:(a.y+b.y)/2};}
+      fly=null;markView("");
+    });
+    canvas.addEventListener("pointermove",e=>{
+      if(!pointers.has(e.pointerId))return;
+      const prev=pointers.get(e.pointerId);const dx=e.clientX-prev.x,dy=e.clientY-prev.y;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      const h=stage.clientHeight||600;
+      if(pointers.size===1){
+        if(dragMode==="pan"){pan(-dx/h*1.4,dy/h*1.4);if(follow)setFollow(false);}
+        else{cam.theta-=dx*0.006;cam.phi=Math.min(1.48,Math.max(0.3,cam.phi-dy*0.005));userMoved=true;}
+      }else if(pointers.size===2&&pinch){
+        const [a,b]=[...pointers.values()];
+        setZoom(pinch.z*pinch.d/Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)));
+        const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+        pan(-(mx-pinch.mx)/h*1.4,(my-pinch.my)/h*1.4);
+        pinch.mx=mx;pinch.my=my;
+      }
+    });
+    const endPtr=e=>{pointers.delete(e.pointerId);if(pointers.size<2)pinch=null;if(pointers.size<=1)dragMode="orbit";};
+    canvas.addEventListener("pointerup",endPtr);canvas.addEventListener("pointercancel",endPtr);
+    canvas.addEventListener("wheel",e=>{e.preventDefault();setZoom(cam.zoom*(1+e.deltaY*0.0012));fly=null;markView("");},{passive:false});
+
+    const ray=new THREE.Raycaster();ray.camera=camera;
+    canvas.addEventListener("dblclick",e=>{
+      const rect=canvas.getBoundingClientRect();
+      ray.setFromCamera({x:((e.clientX-rect.left)/rect.width)*2-1,y:-((e.clientY-rect.top)/rect.height)*2+1},camera);
+      const hits=ray.intersectObjects(scene.children,true).filter(h=>h.object.visible&&!(h.object.isSprite));
+      if(!hits.length)return;
+      const p=hits[0].point;
+      flyTo({t:[p.x,Math.max(0.8,p.y),p.z],theta:cam.theta,phi:cam.phi,zoom:Math.min(cam.zoom,0.5)},"");
+    });
+
+    document.querySelectorAll("#navViews [data-view]").forEach(b=>b.addEventListener("click",()=>flyTo(VIEWS[b.dataset.view],b.dataset.view)));
+    $("#nv-follow").addEventListener("click",()=>setFollow(!follow));
+    $("#dp-home").addEventListener("click",()=>flyTo(VIEWS.overview,"overview"));
+    document.querySelectorAll("#dpad [data-pan],#dpad [data-zoom]").forEach(b=>{
+      const start=()=>{if(b.dataset.pan){const [x,z]=b.dataset.pan.split(",").map(Number);hold.x=x;hold.z=z;if(follow)setFollow(false);}else hold.zoom=Number(b.dataset.zoom);fly=null;markView("");};
+      const stop=()=>{hold.x=0;hold.z=0;hold.zoom=0;};
+      b.addEventListener("pointerdown",e=>{e.preventDefault();b.setPointerCapture(e.pointerId);start();});
+      b.addEventListener("pointerup",stop);b.addEventListener("pointercancel",stop);b.addEventListener("lostpointercapture",stop);
+      b.addEventListener("click",e=>{if(e.detail!==0)return;if(b.dataset.pan){const [x,z]=b.dataset.pan.split(",").map(Number);pan(x*0.12,z*0.12);}else setZoom(cam.zoom*(Number(b.dataset.zoom)>0?0.85:1.18));});
+    });
+    const NAVKEYS={ArrowLeft:1,ArrowRight:1,ArrowUp:1,ArrowDown:1,Equal:1,NumpadAdd:1,Minus:1,NumpadSubtract:1};
+    document.addEventListener("keydown",e=>{
+      if(e.metaKey||e.ctrlKey||e.altKey)return;
+      const tg=e.target&&e.target.tagName;if(tg==="INPUT"||tg==="TEXTAREA")return;
+      if(NAVKEYS[e.code]){e.preventDefault();held.add(e.code);fly=null;markView("");if(follow&&e.code.startsWith("Arrow"))setFollow(false);return;}
+      if(e.code==="KeyF"){setFollow(!follow);return;}
+      if(e.code==="Digit0"||e.code==="Numpad0"){flyTo(VIEWS.overview,"overview");}
+    });
+    document.addEventListener("keyup",e=>held.delete(e.code));
+    window.addEventListener("blur",()=>held.clear());
+    function stepNav(dt){
+      let x=hold.x,z=hold.z,zm=hold.zoom;
+      if(held.has("ArrowLeft"))x-=1;if(held.has("ArrowRight"))x+=1;
+      if(held.has("ArrowUp"))z+=1;if(held.has("ArrowDown"))z-=1;
+      if(held.has("Equal")||held.has("NumpadAdd"))zm+=1;if(held.has("Minus")||held.has("NumpadSubtract"))zm-=1;
+      if(x||z)pan(x*dt*0.55,z*dt*0.55);
+      if(zm)setZoom(cam.zoom*(1-zm*dt*0.9));
+      if(follow&&actObj){const k=1-Math.exp(-dt*5);target.lerp(V(actObj.position.x,Math.max(0.8,actObj.position.y),actObj.position.z),k);}
+    }
+    markView("overview");
+
+    function resize(){
+      const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
+      renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+      const a=w/h;baseR=a>=1.6?14.5:a>=1.2?16.5:a>=0.9?20:a>=0.7?27:34;
+    }
+    new ResizeObserver(resize).observe(stage);resize();
+
+    let last=performance.now(),clock=0;
+    function frame(now){
+      const raw=Math.min(0.05,(now-last)/1000);last=now;clock+=raw;
+      tick(raw);
+      edgePulse=Math.max(0,edgePulse-raw*2.5);
+      const es=1+edgePulse*0.07+(reduceMotion||!state.proxy?0:Math.sin(clock*1.2)*0.012);edge.scale.set(es,es,es);
+      edge.position.y=2.05+(reduceMotion||!state.proxy?0:Math.sin(clock*0.9)*0.05);
+      cloudMat.emissiveIntensity=state.proxy?0.3+edgePulse*0.5:0;
+      SLOTS.forEach(p=>[eSock[p],oSock[p]].forEach(s=>{if(s.pulse>0){s.pulse=Math.max(0,s.pulse-raw*2.2);const k=1+s.pulse*0.9;s.ring.scale.set(k,k,k);}else s.ring.scale.set(1,1,1);}));
+      for(let i=effects.length-1;i>=0;i--){const f=effects[i];f.t+=raw*1.8;const k=1+f.t*3;f.m.scale.set(k,k,k);f.m.material.opacity=Math.max(0,0.9*(1-f.t));if(f.t>=1){scene.remove(f.m);f.m.geometry.dispose();f.m.material.dispose();effects.splice(i,1);}}
+      leds.forEach((l,i)=>{l.visible=reduceMotion||Math.sin(clock*3+i*1.7)>-0.6;});
+      stepFly(raw);stepNav(raw);
+      if(!userMoved&&!fly&&!reduceMotion)cam.theta=VIEWS.overview.theta+Math.sin(clock*0.15)*0.06;
+      placeCamera();
+      renderer.render(scene,camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{tracked.forEach(l=>drawLabel(l));drawScreen();});
+
+    setLang();
+    return {update,beginSeg,moveSeg,endSeg,clearSeg,resetScreen,setLang};
+  }
+
+  setStaticText();
+  try{three=initThree();}
+  catch(err){$("#navViews").hidden=true;$("#dpad").hidden=true;const d=document.createElement("div");d.className="nogl";d.textContent=t("nogl");$("#stage").appendChild(d);}
+  applyState();
+})();
+</script>
+</body>
+</html>
