@@ -4,7 +4,7 @@
 
 An interactive 3D simulator of how Cloudflare maps visitor HTTP/HTTPS ports to the origin server in each SSL/TLS mode. Its behavior is calibrated against live tests on a real zone, not only the documentation.
 
-**Live demo:** `https://<your-username>.github.io/cloudflare-lab/`
+
 
 ---
 
@@ -48,32 +48,7 @@ An interactive 3D simulator of how Cloudflare maps visitor HTTP/HTTPS ports to t
 - Always Use HTTPS روی پورت‌های HTTP غیراستاندارد هم ریدایرکت می‌کند، ولی Location شماره‌ی پورت را حذف می‌کند.
 - تغییر حالت SSL ظرف حدود ۲ تا ۱۵ ثانیه روی لبه اعمال می‌شود.
 
-خروجی خام تست‌ها در پوشه‌ی [`results/`](results/) است. اسم دامنه و IP سرور در آن‌ها جایگزین شده‌اند.
 
-## اجرای تست روی دامنه‌ی خودتان
-
-اسکریپت‌ها در پوشه‌ی [`tools/`](tools/) هستند و روی یک سرور لینوکسی با Python 3.7 به بالا، `curl` و `openssl` اجرا می‌شوند.
-
-| فایل | کار |
-|---|---|
-| `cf-lab-run.py` | کل ماتریس حالت‌ها را خودکار تست می‌کند و در پایان تنظیمات را برمی‌گرداند |
-| `cf-lab-followup.py` | با اوریجینی که هم TLS و هم متن ساده را می‌پذیرد، نشان می‌دهد کلادفلر دقیقاً چه چیزی فرستاده |
-| `cf-origin-echo.py` و `cf-port-test.sh` | نسخه‌ی دستی: پاسخ‌گو روی سرور و تست‌کننده‌ی جداگانه |
-
-توکن API لازم: فقط برای همان zone، با مجوزهای Zone Read، Zone Settings Edit و DNS Edit.
-
-```
-sudo ufw allow 80,443,8080,8443,2052,2053,3000,9443/tcp
-read -rs CF_API_TOKEN
-export CF_API_TOKEN
-python3 tools/cf-lab-run.py --zone yourdomain.com --cert cert.pem --key key.pem
-```
-
-اسکریپت یک زیردامنه‌ی موقت (`cflab.yourdomain.com`) می‌سازد و در پایان پاکش می‌کند. اگر وسط کار قطع شد، با `--restore` همه‌چیز برمی‌گردد. حالت SSL روی کل zone اعمال می‌شود، پس اگر رکورد دیگری با ابر نارنجی دارید، اسکریپت اول از شما تأیید می‌گیرد. بعد از تست توکن را Revoke کنید و پورت‌های تست را ببندید.
-
-## انتشار روی GitHub Pages
-
-Settings ← Pages ← Source: Deploy from a branch ← Branch: `main` و پوشه‌ی `/ (root)` ← Save.
 
 ## منابع
 
