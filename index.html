@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Cloudflare Lab: interactive 3D simulator of how Cloudflare maps visitor HTTP/HTTPS ports to the origin server, calibrated with live tests.">
+<meta name="description" content="Cloudflare Lab by Daily Digital Skills: an interactive 3D simulator of how Cloudflare maps visitor HTTP/HTTPS ports to the origin server, calibrated with live tests.">
+<meta name="author" content="Daily Digital Skills">
+<meta property="og:title" content="Cloudflare Lab · Daily Digital Skills">
+<meta property="og:description" content="Cloudflare Lab by Daily Digital Skills: an interactive 3D simulator of how Cloudflare maps visitor HTTP/HTTPS ports to the origin server, calibrated with live tests.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://azavaxhuman.github.io/cloudflare-lab/">
+<meta name="twitter:card" content="summary">
 <style>
 :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
 *,*::before,*::after{box-sizing:inherit}
@@ -122,6 +128,13 @@ button:disabled{opacity:.35;cursor:not-allowed}
 .sw.ring{border-radius:50%;box-shadow:0 0 0 2px var(--bg),0 0 0 3.5px var(--https)}
 .sw.env{border-radius:2px;width:14px;height:9px}
 .keys{font-size:12px;color:var(--muted);margin:0}
+.byline{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;font-size:13px;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 6px;background:var(--panel);transition:border-color .15s}
+.byline:hover{border-color:var(--amber)}
+.byline:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.byline strong{color:var(--fg);font-weight:700}
+.byline svg{flex:none}
+.credit{font-size:12px;color:var(--muted);margin:0;direction:ltr;text-align:start}
+.credit a{color:var(--amber)}
 kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;background:var(--raise)}
 .c-http{color:var(--http)}
 .c-https{color:var(--https)}
@@ -182,6 +195,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
         </div>
       </div>
       <p id="t-lead"></p>
+      <a class="byline" href="https://www.youtube.com/@Dailydigitalskills" target="_blank" rel="noopener"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="11" fill="var(--amber)"/><path d="M9 6.8v8.4l6.6-4.2z" fill="var(--on-amber)"/></svg><span id="t-by"></span> <strong dir="ltr">Daily Digital Skills</strong></a>
     </div>
 
     <div class="group">
@@ -239,6 +253,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
 
     <div class="legend" id="legend"></div>
     <p class="keys" id="keys"></p>
+    <p class="credit" dir="ltr">© 2026 Daily Digital Skills · <a href="https://www.youtube.com/@Dailydigitalskills" target="_blank" rel="noopener">YouTube @Dailydigitalskills</a> · <a href="https://github.com/azavaxhuman/cloudflare-lab" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/azavaxhuman/cloudflare-lab/blob/main/LICENSE" target="_blank" rel="noopener">License</a></p>
   </aside>
 </div>
 
@@ -246,7 +261,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
 <script>
 (function(){
   const $=s=>document.querySelector(s);
-  const ISO=s=>"⁦"+s+"⁩";
+  const ISO=s=>"\u2066"+s+"\u2069";
   const REQS={
     h80:{scheme:"http",port:80,code:"KeyQ",k:"Q"},
     s443:{scheme:"https",port:443,code:"KeyW",k:"W"},
@@ -267,37 +282,38 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
   const T={
     fa:{
       title:"آزمایشگاه کلادفلر",
+      by:"از کانال یوتیوب",
       lead:"پروکسی، حالت SSL/TLS و نوع درخواست را عوض کنید و مسیر کامل درخواست تا سرور اوریجین و برگشت پاسخ را قدم به قدم ببینید.",
       h_proxy:"پروکسی کلادفلر",
       sw_proxy:"پروکسی روشن (ابر نارنجی)",
-      sw_proxy_s:"خاموش = DNS only، ابر خاکستری؛ کاربر مستقیم به سرور وصل می‌شود",
+      sw_proxy_s:"خاموش = DNS only، ابر خاکستری؛ کاربر مستقیم به سرور وصل می\u200cشود",
       h_mode:"حالت SSL/TLS",
       note_mode_direct:"پروکسی خاموش است، پس حالت SSL/TLS هیچ اثری ندارد.",
       h_req:"درخواست کاربر",
-      note_pull:"پورت‌های HTTP غیراستاندارد در حالت Origin Pull در این شبیه‌ساز نیامده‌اند.",
-      note_off:"در حالت Off فقط HTTPS روی پورت 443 در این شبیه‌ساز آمده است.",
-      note_always:"رفتار Always Use HTTPS روی پورت‌های غیراستاندارد در مستندات کلادفلر نیامده؛ روی دامنه‌ی خودتان با curl -I تست کنید.",
+      note_pull:"پورت\u200cهای HTTP غیراستاندارد در حالت Origin Pull در این شبیه\u200cساز نیامده\u200cاند.",
+      note_off:"در حالت Off فقط HTTPS روی پورت 443 در این شبیه\u200cساز آمده است.",
+      note_always:"رفتار Always Use HTTPS روی پورت\u200cهای غیراستاندارد در مستندات کلادفلر نیامده؛ روی دامنه\u200cی خودتان با curl -I تست کنید.",
       h_set:"تنظیمات",
-      sw_always_s:"لبه درخواست HTTP را با 301 به HTTPS می‌فرستد",
-      sw_origin:"اوریجین پورت 80 را به HTTPS ریدایرکت می‌کند",
+      sw_always_s:"لبه درخواست HTTP را با 301 به HTTPS می\u200cفرستد",
+      sw_origin:"اوریجین پورت 80 را به HTTPS ریدایرکت می\u200cکند",
       sw_origin_s:"مثل return 301 https://… در Nginx",
       sw_cert:"گواهی اوریجین معتبر است",
       sw_cert_s:"خاموش = گواهی self-signed",
       sw_p80:"پورت 80 اوریجین باز است",
-      sw_p80_s:"خاموش = چیزی روی پورت 80 گوش نمی‌دهد",
+      sw_p80_s:"خاموش = چیزی روی پورت 80 گوش نمی\u200cدهد",
       row_first:"اولین درخواست",
       row_redir:"تعداد ریدایرکت",
       row_final:"در نهایت روی اوریجین",
-      none_reach:"به صفحه نمی‌رسد",
+      none_reach:"به صفحه نمی\u200cرسد",
       redir_none:"بدون ریدایرکت",
-      redir_loop:"بی‌نهایت (حلقه)",
+      redir_loop:"بی\u200cنهایت (حلقه)",
       enc_plain:"بدون رمزنگاری",
-      enc_tls:"رمزنگاری‌شده",
+      enc_tls:"رمزنگاری\u200cشده",
       enc_verified:"رمزنگاری + اعتبارسنجی گواهی",
       enc_nocheck:"رمزنگاری، بدون بررسی گواهی",
-      enc_browser:"رمزنگاری؛ خود مرورگر گواهی را بررسی می‌کند",
+      enc_browser:"رمزنگاری؛ خود مرورگر گواهی را بررسی می\u200cکند",
       redir_h:"ریدایرکت یعنی چه؟",
-      redir_p:"ریدایرکت یعنی سرور به‌جای صفحه یک پاسخ کوتاه 301 با هدر Location برمی‌گرداند. درخواست معلق نمی‌ماند: این پاسخ به مرورگر می‌رسد و مرورگر خودش، بدون دخالت کاربر، یک درخواست کاملاً جدید به آدرس Location می‌فرستد. درخواست جدید دوباره از اول همین مسیر را طی می‌کند.",
+      redir_p:"ریدایرکت یعنی سرور به\u200cجای صفحه یک پاسخ کوتاه 301 با هدر Location برمی\u200cگرداند. درخواست معلق نمی\u200cماند: این پاسخ به مرورگر می\u200cرسد و مرورگر خودش، بدون دخالت کاربر، یک درخواست کاملاً جدید به آدرس Location می\u200cفرستد. درخواست جدید دوباره از اول همین مسیر را طی می\u200cکند.",
       h_steps:"مسیر درخواست، قدم به قدم",
       play:"توقف",
       paused:"پخش",
@@ -313,73 +329,74 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
       nav_back:"حرکت به عقب",
       nav_left:"حرکت به چپ",
       nav_right:"حرکت به راست",
-      nav_in:"نزدیک‌تر",
+      nav_in:"نزدیک\u200cتر",
       nav_out:"دورتر",
       nav_home:"کل صحنه",
-      nav_help:"ناوبری: کشیدن = چرخش · راست‌کلیک یا Shift+کشیدن = جابه‌جایی · اسکرول = زوم · دابل‌کلیک = رفتن به همان نقطه · روی گوشی: دو انگشت = جابه‌جایی و زوم · <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> حرکت · <kbd>+</kbd> <kbd>−</kbd> زوم · <kbd>F</kbd> دنبال کردن بسته · <kbd>0</kbd> کل صحنه",
-      nogl:"مرورگر شما نمایش سه‌بعدی (WebGL) را اجرا نکرد. پنل کنار صفحه همچنان مسیر کامل هر حالت را نشان می‌دهد.",
+      nav_help:"ناوبری: کشیدن = چرخش · راست\u200cکلیک یا Shift+کشیدن = جابه\u200cجایی · اسکرول = زوم · دابل\u200cکلیک = رفتن به همان نقطه · روی گوشی: دو انگشت = جابه\u200cجایی و زوم · <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> حرکت · <kbd>+</kbd> <kbd>−</kbd> زوم · <kbd>F</kbd> دنبال کردن بسته · <kbd>0</kbd> کل صحنه",
+      nogl:"مرورگر شما نمایش سه\u200cبعدی (WebGL) را اجرا نکرد. پنل کنار صفحه همچنان مسیر کامل هر حالت را نشان می\u200cدهد.",
       lg_http:"درخواست HTTP",
       lg_https:"درخواست HTTPS",
       lg_200:"پاسخ 200",
       lg_301:"پاسخ 301",
       lg_err:"خطا",
-      keys:"میان‌برها: <kbd>1</kbd>–<kbd>5</kbd> حالت‌ها · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> <kbd>T</kbd> درخواست‌ها · <kbd>P</kbd> پروکسی · <kbd>H</kbd> Always Use HTTPS · <kbd>O</kbd> ریدایرکت اوریجین · <kbd>Space</kbd> پخش/توقف · <kbd>N</kbd> قدم بعدی · <kbd>S</kbd> از اول · <kbd>L</kbd> زبان",
+      keys:"میان\u200cبرها: <kbd>1</kbd>–<kbd>5</kbd> حالت\u200cها · <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>R</kbd> <kbd>T</kbd> درخواست\u200cها · <kbd>P</kbd> پروکسی · <kbd>H</kbd> Always Use HTTPS · <kbd>O</kbd> ریدایرکت اوریجین · <kbd>Space</kbd> پخش/توقف · <kbd>N</kbd> قدم بعدی · <kbd>S</kbd> از اول · <kbd>L</kbd> زبان",
       v_visitor:"کاربر",
-      v_edge:"لبه‌ی کلادفلر",
+      v_edge:"لبه\u200cی کلادفلر",
       v_origin:"سرور اوریجین",
-      st_req:"مرورگر ← لبه‌ی کلادفلر: {r}",
-      st_req_new:"مرورگر خودش درخواست جدید می‌فرستد ← لبه: {r}",
+      st_req:"مرورگر ← لبه\u200cی کلادفلر: {r}",
+      st_req_new:"مرورگر خودش درخواست جدید می\u200cفرستد ← لبه: {r}",
       st_req_direct:"مرورگر مستقیم ← اوریجین: {r}",
-      st_req_direct_new:"مرورگر خودش درخواست جدید می‌فرستد ← مستقیم به اوریجین: {r}",
+      st_req_direct_new:"مرورگر خودش درخواست جدید می\u200cفرستد ← مستقیم به اوریجین: {r}",
       st_fwd:"لبه ← اوریجین: {r} ({enc})",
-      st_fail521:"اتصال برقرار نمی‌شود",
-      st_fail526:"گواهی در اعتبارسنجی رد می‌شود",
+      st_fail521:"اتصال برقرار نمی\u200cشود",
+      st_fail526:"گواهی در اعتبارسنجی رد می\u200cشود",
       st_resp_oe:"اوریجین ← لبه: پاسخ {c}",
       st_resp_eb:"لبه ← مرورگر: پاسخ {c}",
       st_resp_ob:"اوریجین ← مرورگر: پاسخ {c}",
-      st_refused:"پورت 80 اتصال را رد می‌کند؛ مرورگر خطای ERR_CONNECTION_REFUSED نشان می‌دهد",
-      st_certwarn:"اوریجین گواهی self-signed نشان می‌دهد؛ مرورگر هشدار امنیتی NET::ERR_CERT_AUTHORITY_INVALID می‌دهد",
-      st_loop:"همین چرخه تکرار می‌شود؛ مرورگر بعد از حدود ۲۰ ریدایرکت دست می‌کشد: ERR_TOO_MANY_REDIRECTS",
-      sum_direct:"پروکسی خاموش است (DNS only): DNS آدرس IP واقعی اوریجین را برمی‌گرداند و مرورگر مستقیم به همان پورت اوریجین وصل می‌شود. کلادفلر در مسیر نیست، پس حالت SSL/TLS و Always Use HTTPS اثری ندارند و IP سرور هم پنهان نمی‌ماند.",
-      sum_off_http:"در حالت Off همه‌چیز HTTP ساده است و لبه به همان پورت {p} اوریجین وصل می‌شود.",
-      sum_off_https:"مستندات کلادفلر می‌گوید Off درخواست HTTPS را به HTTP ریدایرکت می‌کند، ولی در دو تست جداگانه، حتی با هدرهای مرورگر Chrome، ریدایرکتی اتفاق نیفتاد: لبه خودش HTTPS را جواب داد و با HTTP ساده به پورت 80 اوریجین وصل شد، درست مثل Flexible.",
-      sum_always:"Always Use HTTPS درخواست HTTP را در خود لبه با 301 به HTTPS برمی‌گرداند. درخواست اول هیچ‌وقت به اوریجین نمی‌رسد.",
-      sum_flex_http:"Flexible همیشه با HTTP به اوریجین وصل می‌شود؛ اینجا به پورت {p}.",
-      sum_flex_443:"در Flexible کاربر تا لبه رمزنگاری‌شده می‌آید، ولی لبه با HTTP ساده به پورت 80 اوریجین وصل می‌شود.",
-      sum_flex_other:"Flexible فقط روی پورت 443 کار می‌کند؛ پورت {p} به رفتار Full برمی‌گردد و با HTTPS به همان پورت اوریجین می‌رود.",
-      sum_full_http:"Full پروتکل کاربر را تکرار می‌کند: HTTP کاربر با HTTP ساده به پورت {p} اوریجین می‌رسد.",
-      sum_full_https:"Full با HTTPS به پورت {p} اوریجین وصل می‌شود ولی گواهی را بررسی نمی‌کند.",
-      sum_strict_http:"Full (strict) هم پروتکل کاربر را تکرار می‌کند: HTTP کاربر بدون رمزنگاری به پورت {p} اوریجین می‌رسد. سخت‌گیری strict فقط برای اتصال‌های HTTPS است.",
-      sum_strict_https:"Full (strict) با HTTPS به پورت {p} اوریجین وصل می‌شود و گواهی را کامل اعتبارسنجی می‌کند.",
-      sum_pull_80:"Strict (SSL-Only Origin Pull) تنها حالتی است که HTTP کاربر را بدون ریدایرکت به HTTPS روی پورت 443 اوریجین تبدیل می‌کند. این حالت فقط در پلن Enterprise است.",
+      st_refused:"پورت 80 اتصال را رد می\u200cکند؛ مرورگر خطای ERR_CONNECTION_REFUSED نشان می\u200cدهد",
+      st_certwarn:"اوریجین گواهی self-signed نشان می\u200cدهد؛ مرورگر هشدار امنیتی NET::ERR_CERT_AUTHORITY_INVALID می\u200cدهد",
+      st_loop:"همین چرخه تکرار می\u200cشود؛ مرورگر بعد از حدود ۲۰ ریدایرکت دست می\u200cکشد: ERR_TOO_MANY_REDIRECTS",
+      sum_direct:"پروکسی خاموش است (DNS only): DNS آدرس IP واقعی اوریجین را برمی\u200cگرداند و مرورگر مستقیم به همان پورت اوریجین وصل می\u200cشود. کلادفلر در مسیر نیست، پس حالت SSL/TLS و Always Use HTTPS اثری ندارند و IP سرور هم پنهان نمی\u200cماند.",
+      sum_off_http:"در حالت Off همه\u200cچیز HTTP ساده است و لبه به همان پورت {p} اوریجین وصل می\u200cشود.",
+      sum_off_https:"مستندات کلادفلر می\u200cگوید Off درخواست HTTPS را به HTTP ریدایرکت می\u200cکند، ولی در دو تست جداگانه، حتی با هدرهای مرورگر Chrome، ریدایرکتی اتفاق نیفتاد: لبه خودش HTTPS را جواب داد و با HTTP ساده به پورت 80 اوریجین وصل شد، درست مثل Flexible.",
+      sum_always:"Always Use HTTPS درخواست HTTP را در خود لبه با 301 به HTTPS برمی\u200cگرداند. درخواست اول هیچ\u200cوقت به اوریجین نمی\u200cرسد.",
+      sum_flex_http:"Flexible همیشه با HTTP به اوریجین وصل می\u200cشود؛ اینجا به پورت {p}.",
+      sum_flex_443:"در Flexible کاربر تا لبه رمزنگاری\u200cشده می\u200cآید، ولی لبه با HTTP ساده به پورت 80 اوریجین وصل می\u200cشود.",
+      sum_flex_other:"Flexible فقط روی پورت 443 کار می\u200cکند؛ پورت {p} به رفتار Full برمی\u200cگردد و با HTTPS به همان پورت اوریجین می\u200cرود.",
+      sum_full_http:"Full پروتکل کاربر را تکرار می\u200cکند: HTTP کاربر با HTTP ساده به پورت {p} اوریجین می\u200cرسد.",
+      sum_full_https:"Full با HTTPS به پورت {p} اوریجین وصل می\u200cشود ولی گواهی را بررسی نمی\u200cکند.",
+      sum_strict_http:"Full (strict) هم پروتکل کاربر را تکرار می\u200cکند: HTTP کاربر بدون رمزنگاری به پورت {p} اوریجین می\u200cرسد. سخت\u200cگیری strict فقط برای اتصال\u200cهای HTTPS است.",
+      sum_strict_https:"Full (strict) با HTTPS به پورت {p} اوریجین وصل می\u200cشود و گواهی را کامل اعتبارسنجی می\u200cکند.",
+      sum_pull_80:"Strict (SSL-Only Origin Pull) تنها حالتی است که HTTP کاربر را بدون ریدایرکت به HTTPS روی پورت 443 اوریجین تبدیل می\u200cکند. این حالت فقط در پلن Enterprise است.",
       sum_pull_other:"در Origin Pull اتصال به اوریجین همیشه HTTPS با اعتبارسنجی گواهی است، اینجا روی پورت {p}.",
-      sum_origin_redirect:"اوریجین به درخواست HTTP روی پورت 80 جواب 301 به HTTPS می‌دهد.",
-      sum_521:"پورت 80 اوریجین بسته است، پس لبه نمی‌تواند وصل شود و خطای 521 برمی‌گرداند.",
-      sum_526:"گواهی self-signed در اعتبارسنجی رد می‌شود و لبه خطای 526 برمی‌گرداند.",
-      sum_selfsigned_ok:"گواهی self-signed است، ولی این حالت گواهی را بررسی نمی‌کند و اتصال برقرار می‌شود.",
-      sum_refused:"پورت 80 اوریجین بسته است و چون کلادفلر در مسیر نیست، مرورگر خودش خطای اتصال می‌گیرد.",
-      sum_certwarn:"بدون پروکسی، خود مرورگر گواهی را بررسی می‌کند و گواهی self-signed را قبول نمی‌کند.",
-      sum_loop:"حلقه‌ی ریدایرکت: دو طرف مرورگر را مدام به آدرس دیگری می‌فرستند و صفحه هیچ‌وقت باز نمی‌شود.",
-      sum_loop_flex:"این همان حلقه‌ی معروف Flexible است: لبه با HTTP به اوریجین می‌رود و اوریجین دوباره به HTTPS ریدایرکت می‌کند. راه‌حل، حالت Full (strict) است.",
+      sum_origin_redirect:"اوریجین به درخواست HTTP روی پورت 80 جواب 301 به HTTPS می\u200cدهد.",
+      sum_521:"پورت 80 اوریجین بسته است، پس لبه نمی\u200cتواند وصل شود و خطای 521 برمی\u200cگرداند.",
+      sum_526:"گواهی self-signed در اعتبارسنجی رد می\u200cشود و لبه خطای 526 برمی\u200cگرداند.",
+      sum_selfsigned_ok:"گواهی self-signed است، ولی این حالت گواهی را بررسی نمی\u200cکند و اتصال برقرار می\u200cشود.",
+      sum_refused:"پورت 80 اوریجین بسته است و چون کلادفلر در مسیر نیست، مرورگر خودش خطای اتصال می\u200cگیرد.",
+      sum_certwarn:"بدون پروکسی، خود مرورگر گواهی را بررسی می\u200cکند و گواهی self-signed را قبول نمی\u200cکند.",
+      sum_loop:"حلقه\u200cی ریدایرکت: دو طرف مرورگر را مدام به آدرس دیگری می\u200cفرستند و صفحه هیچ\u200cوقت باز نمی\u200cشود.",
+      sum_loop_flex:"این همان حلقه\u200cی معروف Flexible است: لبه با HTTP به اوریجین می\u200cرود و اوریجین دوباره به HTTPS ریدایرکت می\u200cکند. راه\u200cحل، حالت Full (strict) است.",
       custom:"دلخواه",
       custom_l:"پورت دلخواه:",
       sw_rule:"Origin Rule: تغییر پورت مقصد",
-      sw_rule_s:"لبه به‌جای پورت معمول به پورت {p} اوریجین وصل می‌شود",
-      st_noproxy:"کلادفلر روی پورت {p} گوش نمی‌دهد؛ اتصال برقرار نمی‌شود و مرورگر بعد از مدتی خطای ERR_CONNECTION_TIMED_OUT می‌دهد",
-      st_tls:"پورت {p} در کلادفلر مخصوص HTTP است؛ دست‌دهی TLS شکست می‌خورد: ERR_SSL_PROTOCOL_ERROR",
-      sum_unsupported:"پورت {p} جزو پورت‌هایی نیست که کلادفلر پروکسی می‌کند، پس با ابر نارنجی این درخواست اصلاً به اوریجین نمی‌رسد. سه راه دارید: پروکسی این زیردامنه را خاموش کنید (DNS only)، با Origin Rule یک پورت استاندارد را به این پورت اوریجین وصل کنید، یا از Spectrum استفاده کنید که برای همه‌ی پورت‌ها فقط در پلن Enterprise است.",
-      sum_mismatch_https:"پورت {p} در کلادفلر برای HTTP است، نه HTTPS. لبه روی این پورت TLS ندارد، پس اتصال HTTPS شکست می‌خورد.",
-      sum_mismatch_http:"پورت {p} در کلادفلر برای HTTPS است و درخواست HTTP ساده روی آن با خطای 400 رد می‌شود.",
-      sum_nocache:"پورت {p} پروکسی می‌شود، ولی کش کلادفلر روی آن غیرفعال است.",
-      sum_origin_rule:"Origin Rule پورت مقصد را عوض می‌کند: لبه به‌جای پورت {from}، به پورت {p} اوریجین وصل می‌شود. پروتکل اتصال را همچنان حالت SSL/TLS تعیین می‌کند.",
-      sum_measured:"این رفتار در تست واقعی روی دامنه هم دقیقاً همین‌طور دیده شد.",
-      st_fail520:"اوریجین روی این پورت HTTPS گوش می‌دهد و درخواست HTTP ساده را نمی‌فهمد",
-      sum_off_https_other:"روی پورت {p} هم لبه HTTPS را جواب می‌دهد، ولی با HTTP ساده به همان پورت {p} اوریجین وصل می‌شود. فرق Off با Flexible همین‌جاست: Flexible روی این پورت TLS می‌فرستد ولی Off متن ساده. اگر اوریجین روی این پورت فقط HTTPS گوش بدهد، نتیجه خطای 520 است.",
-      sum_always_other:"در تست واقعی روی پورت {p} هم ریدایرکت انجام شد، ولی Location شماره‌ی پورت را حذف کرد و کاربر را به https روی پورت 443 فرستاد.",
-      sum_flex_measured:"در تست تکمیلی، Flexible روی این پورت همیشه با TLS به همان پورت اوریجین وصل شد، یعنی دقیقاً مثل Full. خطای 520 تست اول فقط در چند ثانیه‌ی اول بعد از عوض شدن حالت دیده شده بود."
+      sw_rule_s:"لبه به\u200cجای پورت معمول به پورت {p} اوریجین وصل می\u200cشود",
+      st_noproxy:"کلادفلر روی پورت {p} گوش نمی\u200cدهد؛ اتصال برقرار نمی\u200cشود و مرورگر بعد از مدتی خطای ERR_CONNECTION_TIMED_OUT می\u200cدهد",
+      st_tls:"پورت {p} در کلادفلر مخصوص HTTP است؛ دست\u200cدهی TLS شکست می\u200cخورد: ERR_SSL_PROTOCOL_ERROR",
+      sum_unsupported:"پورت {p} جزو پورت\u200cهایی نیست که کلادفلر پروکسی می\u200cکند، پس با ابر نارنجی این درخواست اصلاً به اوریجین نمی\u200cرسد. سه راه دارید: پروکسی این زیردامنه را خاموش کنید (DNS only)، با Origin Rule یک پورت استاندارد را به این پورت اوریجین وصل کنید، یا از Spectrum استفاده کنید که برای همه\u200cی پورت\u200cها فقط در پلن Enterprise است.",
+      sum_mismatch_https:"پورت {p} در کلادفلر برای HTTP است، نه HTTPS. لبه روی این پورت TLS ندارد، پس اتصال HTTPS شکست می\u200cخورد.",
+      sum_mismatch_http:"پورت {p} در کلادفلر برای HTTPS است و درخواست HTTP ساده روی آن با خطای 400 رد می\u200cشود.",
+      sum_nocache:"پورت {p} پروکسی می\u200cشود، ولی کش کلادفلر روی آن غیرفعال است.",
+      sum_origin_rule:"Origin Rule پورت مقصد را عوض می\u200cکند: لبه به\u200cجای پورت {from}، به پورت {p} اوریجین وصل می\u200cشود. پروتکل اتصال را همچنان حالت SSL/TLS تعیین می\u200cکند.",
+      sum_measured:"این رفتار در تست واقعی روی دامنه هم دقیقاً همین\u200cطور دیده شد.",
+      st_fail520:"اوریجین روی این پورت HTTPS گوش می\u200cدهد و درخواست HTTP ساده را نمی\u200cفهمد",
+      sum_off_https_other:"روی پورت {p} هم لبه HTTPS را جواب می\u200cدهد، ولی با HTTP ساده به همان پورت {p} اوریجین وصل می\u200cشود. فرق Off با Flexible همین\u200cجاست: Flexible روی این پورت TLS می\u200cفرستد ولی Off متن ساده. اگر اوریجین روی این پورت فقط HTTPS گوش بدهد، نتیجه خطای 520 است.",
+      sum_always_other:"در تست واقعی روی پورت {p} هم ریدایرکت انجام شد، ولی Location شماره\u200cی پورت را حذف کرد و کاربر را به https روی پورت 443 فرستاد.",
+      sum_flex_measured:"در تست تکمیلی، Flexible روی این پورت همیشه با TLS به همان پورت اوریجین وصل شد، یعنی دقیقاً مثل Full. خطای 520 تست اول فقط در چند ثانیه\u200cی اول بعد از عوض شدن حالت دیده شده بود."
     },
     en:{
       title:"Cloudflare Lab",
+      by:"From the YouTube channel",
       lead:"Change the proxy, the SSL/TLS mode and the request type, and follow the full path to the origin server and the response back, step by step.",
       h_proxy:"Cloudflare proxy",
       sw_proxy:"Proxied (orange cloud)",
@@ -716,7 +733,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
   }
 
   function setStaticText(){
-    const ids={"t-title":"title","t-lead":"lead","t-h-proxy":"h_proxy","t-sw-proxy":"sw_proxy","t-sw-proxy-s":"sw_proxy_s","t-h-mode":"h_mode","t-h-req":"h_req","t-h-set":"h_set","t-sw-always-s":"sw_always_s","t-sw-origin":"sw_origin","t-sw-rule":"sw_rule","t-custom-l":"custom_l","t-sw-origin-s":"sw_origin_s","t-sw-cert":"sw_cert","t-sw-cert-s":"sw_cert_s","t-sw-p80":"sw_p80","t-sw-p80-s":"sw_p80_s","t-row-first":"row_first","t-row-redir":"row_redir","t-row-final":"row_final","t-redir-h":"redir_h","t-redir-p":"redir_p","t-h-steps":"h_steps","btnNext":"next","btnRestart":"restart","nv-overview":"nav_overview","nv-visitor":"nav_visitor","nv-edge":"nav_edge","nv-origin":"nav_origin","nv-follow":"nav_follow"};
+    const ids={"t-title":"title","t-by":"by","t-lead":"lead","t-h-proxy":"h_proxy","t-sw-proxy":"sw_proxy","t-sw-proxy-s":"sw_proxy_s","t-h-mode":"h_mode","t-h-req":"h_req","t-h-set":"h_set","t-sw-always-s":"sw_always_s","t-sw-origin":"sw_origin","t-sw-rule":"sw_rule","t-custom-l":"custom_l","t-sw-origin-s":"sw_origin_s","t-sw-cert":"sw_cert","t-sw-cert-s":"sw_cert_s","t-sw-p80":"sw_p80","t-sw-p80-s":"sw_p80_s","t-row-first":"row_first","t-row-redir":"row_redir","t-row-final":"row_final","t-redir-h":"redir_h","t-redir-p":"redir_p","t-h-steps":"h_steps","btnNext":"next","btnRestart":"restart","nv-overview":"nav_overview","nv-visitor":"nav_visitor","nv-edge":"nav_edge","nv-origin":"nav_origin","nv-follow":"nav_follow"};
     Object.keys(ids).forEach(id=>{$("#"+id).textContent=t(ids[id]);});
     $("#keys").innerHTML=t("keys")+"<br>"+t("nav_help");
     [["dp-up","nav_fwd"],["dp-down","nav_back"],["dp-left","nav_left"],["dp-right","nav_right"],["dp-zin","nav_in"],["dp-zout","nav_out"],["dp-home","nav_home"]].forEach(([id,k])=>{const b=$("#"+id);b.title=t(k);b.setAttribute("aria-label",t(k));});
